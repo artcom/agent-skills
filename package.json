@@ -1,0 +1,12 @@
+{
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "description": "ART+COM collection of AI agent skills",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
