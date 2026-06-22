@@ -1,9 +1,9 @@
 ---
-name: ac-prototype-workflow
-description: Guide non-technical ART+COM users from an idea to a shareable web prototype. Use when a user wants to create or extend a prototype, check or install web-development tools, create a GitLab project under gitlab.artcom.de/prototypes, connect a Netlify site, choose between Astro, React, React Three Fiber, or optionally add MQTT.
+name: prototyping
+description: Guide non-technical ART+COM users from an idea to a shareable internal web prototype. Use when a user wants to create or extend a prototype, choose its target display and input, check or install web-development tools, create a GitLab project under gitlab.artcom.de/prototypes, connect a Netlify site, choose between Astro, React, React Three Fiber, or optionally add MQTT.
 ---
 
-# ART+COM Prototype Workflow
+# ART+COM Prototyping
 
 Take one understandable step at a time. Explain outcomes, not implementation details. Run commands and make technical decisions for the user. Proceed automatically through the standard workflow; ask questions only when the answer changes the prototype, an interactive login needs the user, permissions are missing, or an existing project could be overwritten.
 
@@ -34,10 +34,13 @@ Ask one question at a time, in this order:
 
 1. “Are we starting a new prototype, or improving an existing folder?” If existing, ask them to choose the folder.
 2. “In one or two sentences, what should people be able to see or do?”
-3. “Will it contain a 3D scene or object that people can explore?”
-4. If not 3D: “Is it mainly a content website with pages, text, images, and simple animations?”
-5. “Does it need to show or control live data from an MQTT broker?” Explain that “I’m not sure” is a valid answer; treat it as no MQTT for now.
-6. For a new project, ask for a simple project name. Derive a lowercase, hyphenated folder and repository name from it.
+3. “What exact display resolution should it target? Say ‘4K’ or give width × height.” Treat 4K as 3840 × 2160 unless the user gives a different 4K format.
+4. “Should the app be portrait or landscape?”
+5. “Will people use touch input? Answer yes or no.”
+6. “Will it contain a 3D scene or object that people can explore?”
+7. If not 3D: “Is it mainly a content website with pages, text, images, and simple animations?”
+8. “Does it need to show or control live data from an MQTT broker?” Explain that “I’m not sure” is a valid answer; treat it as no MQTT for now.
+9. For a new project, ask for a simple project name. Derive a lowercase, hyphenated folder and repository name from it.
 
 For a new prototype, use `~/Documents/prototypes/<project-name>` unless the user already supplied a destination. Create the `prototypes` folder if needed. If that project folder already exists, do not overwrite it; ask the user whether to use that folder or a different name.
 
@@ -69,13 +72,21 @@ npm install
 npm install three @react-three/fiber @react-three/drei
 ```
 
+Immediately after scaffolding a new project, create `AGENTS.md` with these project constraints:
+
+```md
+# ART+COM internal prototype
+
+This is an ART+COM internal prototype. Do not add accessibility features or responsive layouts. Build only for the agreed target resolution, orientation, and touch-input mode.
+```
+
 For an existing project, inspect `package.json`, identify its current framework and commands, and extend it without replacing its configuration, lockfile, or deployment setup.
 
-Create a minimal working first screen that reflects the user’s description. For a 3D project, include a visible, interactive Three.js scene; do not merely install the packages. For a content site, include the requested page structure and sample content. For an interactive app, include the main interaction or data-state shape. Keep the first version small and runnable.
+Create a minimal working first screen that reflects the user’s description and the agreed target resolution, orientation, and touch-input mode. Do not add responsive layouts or accessibility features. For a 3D project, include a visible, interactive Three.js scene; do not merely install the packages. For a content site, include the requested page structure and sample content. For an interactive app, include the main interaction or data-state shape. Keep the first version small and runnable.
 
 Create `.env.example` with names and safe placeholders only. Ensure real `.env*` files are ignored by Git. Never put real broker URLs, credentials, or Netlify secrets in source code, `netlify.toml`, commits, or output.
 
-Create a `netlify.toml` with the actual build command and `dist` as the publish directory for Astro and Vite. Run `npm run build`, then launch the local app and inspect it in a browser. For 3D, verify that a visible canvas renders and that the promised interaction works; a successful build alone is insufficient.
+Create a `netlify.toml` with the actual build command and `dist` as the publish directory for Astro and Vite. Run `npm run build`; a successful build is sufficient verification.
 
 ## 4. Add live MQTT data only when wanted
 

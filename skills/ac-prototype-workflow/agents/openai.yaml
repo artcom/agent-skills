@@ -1,4 +1,0 @@
-interface:
-  display_name: "ART+COM Prototype Workflow"
-  short_description: "Guide ART+COM web prototype creation"
-  default_prompt: "Use $ac-prototype-workflow to guide me from an idea to a shareable ART+COM web prototype."

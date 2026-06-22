@@ -1,0 +1,4 @@
+interface:
+  display_name: "ART+COM Prototyping"
+  short_description: "Scaffold ART+COM internal web prototypes"
+  default_prompt: "Use $prototyping to guide me from an idea to a shareable ART+COM web prototype."

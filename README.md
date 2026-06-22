@@ -6,7 +6,7 @@ A collection of reusable [AI agent skills](https://skills.sh/) by [ART+COM](http
 
 | Skill                                         | Description                                                                                                                                         |
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [ac-prototype-workflow](/skills/ac-prototype-workflow/SKILL.md) | Scaffold and deploy ART+COM web prototypes with GitLab, Netlify, and optional MQTT support |
+| [prototyping](/skills/prototyping/SKILL.md) | Scaffold and deploy ART+COM web prototypes with GitLab, Netlify, and optional MQTT support |
 | [mqtt-topping](/skills/mqtt-topping/SKILL.md) | Connect to MQTT brokers, subscribe/publish messages, and query retained data over HTTP using [mqtt-topping](https://github.com/artcom/mqtt-topping) |
 
 ## Installation
@@ -20,8 +20,8 @@ npx skills add artcom/agent-skills --list
 # Install a specific skill
 npx skills add artcom/agent-skills --skill mqtt-topping
 
-# Install the prototype workflow skill
-npx skills add artcom/agent-skills --skill ac-prototype-workflow
+# Install the prototyping skill
+npx skills add artcom/agent-skills --skill prototyping
 
 # Install all skills
 npx skills add artcom/agent-skills --all
@@ -40,10 +40,10 @@ Skills are symlinked into your project's `.agents/skills/` directory and become 
 Update an installed skill to the latest published version with:
 
 ```bash
-npx skills update ac-prototype-workflow -p -y
+npx skills update prototyping -p -y
 ```
 
-Skills.sh updates from the original source; it does not define a per-skill version field. Use annotated, per-skill Semantic Versioning Git tags for immutable releases, for example `ac-prototype-workflow-v0.2.0`. Create a patch tag for fixes, a minor tag for backwards-compatible behavior, and a major tag for breaking workflow changes. Keep `main` as the latest version.
+Skills.sh updates from the original source; it does not define a per-skill version field. Use annotated, per-skill Semantic Versioning Git tags for immutable releases, for example `prototyping-v1.0.0`. Create a patch tag for fixes, a minor tag for backwards-compatible behavior, and a major tag for breaking workflow changes. Keep `main` as the latest version.
 
 ## Versioning and releasing skills
 
@@ -73,7 +73,7 @@ This repository hosts multiple skills side-by-side. Each skill lives in its own 
 
 ```
 skills/
-├── ac-prototype-workflow/
+├── prototyping/
 │   ├── SKILL.md
 │   └── scripts/
 ├── mqtt-topping/
