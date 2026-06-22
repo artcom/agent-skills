@@ -59,8 +59,8 @@ For each release:
 2. Create an annotated tag on that exact commit, with a short release summary:
 
    ```bash
-   git tag -a ac-prototype-workflow-v0.1.1 -m "Release ac-prototype-workflow v0.1.1"
-   git push origin ac-prototype-workflow-v0.1.1
+   git tag -a prototyping-v1.0.1 -m "Release prototyping v1.0.1"
+   git push origin prototyping-v1.0.1
    ```
 
 3. Describe the user-visible change in the annotated tag message or the Git hosting release notes.

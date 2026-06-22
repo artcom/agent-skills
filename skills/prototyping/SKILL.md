@@ -34,15 +34,16 @@ Ask one question at a time, in this order:
 
 1. “Are we starting a new prototype, or improving an existing folder?” If existing, ask them to choose the folder.
 2. “In one or two sentences, what should people be able to see or do?”
-3. “What exact display resolution should it target? Say ‘4K’ or give width × height.” Treat 4K as 3840 × 2160 unless the user gives a different 4K format.
-4. “Should the app be portrait or landscape?”
-5. “Will people use touch input? Answer yes or no.”
-6. “Will it contain a 3D scene or object that people can explore?”
-7. If not 3D: “Is it mainly a content website with pages, text, images, and simple animations?”
-8. “Does it need to show or control live data from an MQTT broker?” Explain that “I’m not sure” is a valid answer; treat it as no MQTT for now.
-9. For a new project, ask for a simple project name. Derive a lowercase, hyphenated folder and repository name from it.
+3. “Which ART+COM project is this prototype for?” Derive a lowercase, hyphenated `project-slug` from the answer.
+4. “What exact display resolution should it target? Say ‘4K’ or give width × height.” Treat 4K as 3840 × 2160 unless the user gives a different 4K format.
+5. “Should the app be portrait or landscape?”
+6. “Will people use touch input? Answer yes or no.”
+7. “Will it contain a 3D scene or object that people can explore?”
+8. If not 3D: “Is it mainly a content website with pages, text, images, and simple animations?”
+9. “Does it need to show or control live data from an MQTT broker?” Explain that “I’m not sure” is a valid answer; treat it as no MQTT for now.
+10. For a new prototype, ask for a simple prototype name. Derive a lowercase, hyphenated `prototype-name` for its local folder. Use `<project-slug>-<prototype-name>` as its `repository-name`.
 
-For a new prototype, use `~/Documents/prototypes/<project-name>` unless the user already supplied a destination. Create the `prototypes` folder if needed. If that project folder already exists, do not overwrite it; ask the user whether to use that folder or a different name.
+For a new prototype, use `~/Documents/prototypes/<prototype-name>` unless the user already supplied a destination. Create the `prototypes` folder if needed. If that prototype folder already exists, do not overwrite it; ask the user whether to use that folder or a different name.
 
 Do not ask non-technical users to choose a framework, GitLab group, build command, publish directory, or Netlify team. Use the defaults below and explain the choice in one sentence.
 
@@ -61,11 +62,11 @@ For a new project, create it only after all readiness checks succeed. Explain th
 
 ```bash
 # Content site
-npm create astro@latest <project-name>
+npm create astro@latest <prototype-name>
 
 # Interactive or 3D experience
-npm create vite@latest <project-name> -- --template react-ts
-cd <project-name>
+npm create vite@latest <prototype-name> -- --template react-ts
+cd <prototype-name>
 npm install
 
 # Add this only for 3D
@@ -102,15 +103,15 @@ Use `PUBLIC_BROKER` only for browser-safe, non-secret connection information. Ke
 
 ## 5. Give every new prototype its shared home
 
-New ART+COM prototypes belong in the `prototypes` group on `https://gitlab.artcom.de`. Do not ask the user to choose a namespace or confirm this standard setup. Once the local prototype builds successfully, automatically create its private project at `https://gitlab.artcom.de/prototypes/<project-name>` and connect the folder to it.
+New ART+COM prototypes belong in the `prototypes` group on `https://gitlab.artcom.de`. Do not ask the user to choose a namespace or confirm this standard setup. Once the local prototype builds successfully, automatically create its private project at `https://gitlab.artcom.de/prototypes/<repository-name>` and connect the folder to it. Always prefix `repository-name` with `project-slug`.
 
-Initialise Git if necessary. Check whether the GitLab project already exists before creating it; if it does, connect only when it is the intended `prototypes/<project-name>` project. Otherwise create it with the ART+COM host explicitly selected:
+Initialise Git if necessary. Check whether the GitLab project already exists before creating it; if it does, connect only when it is the intended `prototypes/<repository-name>` project. Otherwise create it with the ART+COM host explicitly selected:
 
 ```bash
-GITLAB_HOST=gitlab.artcom.de glab repo create prototypes/<project-name> --private --defaultBranch main
+GITLAB_HOST=gitlab.artcom.de glab repo create prototypes/<repository-name> --private --defaultBranch main
 ```
 
-Verify the `origin` remote points to `gitlab.artcom.de/prototypes/<project-name>`. Never replace a different existing remote. Before the first commit, verify that `.env`, `.env.*` except `.env.example`, `node_modules`, and build output are not staged. Automatically make the initial commit and push the new prototype once the project is connected. Report the GitLab URL and commit after the push completes.
+Verify the `origin` remote points to `gitlab.artcom.de/prototypes/<repository-name>`. Never replace a different existing remote. Before the first commit, verify that `.env`, `.env.*` except `.env.example`, `node_modules`, and build output are not staged. Automatically make the initial commit and push the new prototype once the project is connected. Report the GitLab URL and commit after the push completes.
 
 For an existing project, retain its current remote unless the user explicitly asks to create or replace it with a project under `prototypes`.
 
@@ -119,10 +120,10 @@ For an existing project, retain its current remote unless the user explicitly as
 From the project root, state that the prototype is being connected to Netlify. Do not use `netlify init`: it configures continuous deployment and introduces interactive Git-provider setup. List accessible Netlify teams, select the one clearly named ART+COM, and create a directly deployable site with:
 
 ```bash
-netlify sites:create --name <project-name> --account-slug <artcom-team-slug>
+netlify sites:create --name <prototype-name> --account-slug <artcom-team-slug>
 ```
 
-This creates and links an empty project to the current folder. If a site of that name already exists, link it only when it belongs to the intended ART+COM team; otherwise create `<project-name>-<yyyymmdd>`. Keep `.netlify/state.json` local only. Run the local build first, then deploy with `netlify deploy --prod --build`. Do not configure GitLab continuous deployment in this initial flow.
+This creates and links an empty project to the current folder. If a site of that name already exists, link it only when it belongs to the intended ART+COM team; otherwise create `<prototype-name>-<yyyymmdd>`. Keep `.netlify/state.json` local only. Run the local build first, then deploy with `netlify deploy --prod --build`. Do not configure GitLab continuous deployment in this initial flow.
 
 After linking, run `netlify env:list --json` and check only whether `PUBLIC_BROKER` and `INTERNAL_BROKER` exist with appropriate scopes and deploy contexts; never show their values. `INTERNAL_BROKER` needs the Functions scope when it is used by a Netlify Function.
 
