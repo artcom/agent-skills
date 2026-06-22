@@ -36,7 +36,9 @@ else
   printf '%-14s needs login\n' "glab auth"
 fi
 
-if command -v netlify >/dev/null 2>&1 && netlify status >/dev/null 2>&1; then
+if ! command -v netlify >/dev/null 2>&1; then
+  printf '%-14s unavailable\n' "netlify auth"
+elif netlify teams:list >/dev/null 2>&1; then
   printf '%-14s authenticated\n' "netlify auth"
 else
   printf '%-14s needs login\n' "netlify auth"

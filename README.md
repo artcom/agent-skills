@@ -35,6 +35,16 @@ npx skills add artcom/agent-skills --skill mqtt-topping -g
 
 Skills are symlinked into your project's `.agents/skills/` directory and become available to your AI agent automatically. Use `--copy` if you prefer independent copies instead of symlinks.
 
+## Updating and releases
+
+Update an installed skill to the latest published version with:
+
+```bash
+npx skills update ac-prototype-workflow -p -y
+```
+
+Skills.sh updates from the original source; it does not define a per-skill version field. Use annotated, per-skill Semantic Versioning Git tags for immutable releases, for example `ac-prototype-workflow-v0.2.0`. Create a patch tag for fixes, a minor tag for backwards-compatible behavior, and a major tag for breaking workflow changes. Keep `main` as the latest version.
+
 ## Repository Structure
 
 This repository hosts multiple skills side-by-side. Each skill lives in its own directory under `skills/`:
