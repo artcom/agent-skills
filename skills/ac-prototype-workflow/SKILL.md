@@ -1,89 +1,114 @@
 ---
 name: ac-prototype-workflow
-description: Scaffold, connect, and deploy shareable ART+COM web prototypes. Use when a user wants to start or add a frontend prototype, prepare a project for GitLab and Netlify, check local frontend tooling, configure ART+COM broker variables, or optionally add MQTT with mqtt-topping.
+description: Guide non-technical ART+COM users from an idea to a shareable web prototype. Use when a user wants to create or extend a prototype, check or install web-development tools, create a GitLab project under gitlab.artcom.de/prototypes, connect a Netlify site, choose between Astro, React, React Three Fiber, or optionally add MQTT.
 ---
 
 # ART+COM Prototype Workflow
 
-Guide the user from a local folder to a runnable, GitLab-hosted, Netlify-linked web prototype. Keep all external writes behind an explicit confirmation.
+Take one understandable step at a time. Explain outcomes, not implementation details. Run commands and make technical decisions for the user; only ask questions that change the result or require their consent.
 
-## 1. Establish the target
+## 1. Start with a short conversation
 
-Ask first whether to add this capability to an **existing project/folder/repository** or create a **new project**. Do not assume that the current working directory is the target.
+Ask one question at a time, in this order:
 
-For an existing target, ask for its path, inspect its package manager and framework, and preserve its conventions. Do not replace an existing starter, build configuration, lockfile, or deployment configuration without approval.
+1. “Are we starting a new prototype, or improving an existing folder?” If existing, ask them to choose the folder.
+2. “In one or two sentences, what should people be able to see or do?”
+3. “Will it contain a 3D scene or object that people can explore?”
+4. If not 3D: “Is it mainly a content website with pages, text, images, and simple animations?”
+5. “Does it need to show or control live data from an MQTT broker?” Explain that “I’m not sure” is a valid answer.
+6. For a new project, ask for a simple project name. Derive a lowercase, hyphenated folder and repository name from it.
 
-For a new target, ask for the project directory, project name, GitLab namespace, Netlify team, and frontend framework. Recommend **Vite + React + TypeScript** when no framework is specified. Ask whether MQTT support is required.
+Do not ask non-technical users to choose a framework, GitLab group, build command, publish directory, or Netlify team. Use the defaults below and explain the choice in one sentence.
 
-Before any command that installs software, creates a GitLab project, creates or links a Netlify site, changes remote variables, or deploys, state exactly what it will change and obtain confirmation.
+| What the user needs | Use | Explain it as |
+| --- | --- | --- |
+| 3D scene, spatial interaction, WebGL | React + TypeScript + Three.js via React Three Fiber | “A solid base for a real-time 3D experience.” |
+| Content-led site, story, portfolio, information pages | Astro + TypeScript | “Fast pages that are simple to update.” |
+| Interactive controls, visual UI, data display, or an app-like tool | React + TypeScript + Vite | “A flexible base for interactive experiences.” |
+| Unclear | React + TypeScript + Vite | “A safe general-purpose starting point; we can change direction later.” |
 
-## 2. Run the local-tooling preflight
+Use MQTT only when the user explicitly wants it or confirms it after the plain-language question.
 
-Run `bash scripts/check-prerequisites.sh` from this skill directory. Report the detected versions and authentication states without exposing tokens or environment-variable values.
+## 2. Make the computer ready before creating files
 
-Require all of the following before scaffolding or deploying:
+Run `bash scripts/check-prerequisites.sh` from this skill directory first. Give a short plain-language summary: what is ready, what is missing, and what happens next. Never print login tokens or environment-variable values.
 
-- Homebrew (`brew`), unless the user selects another supported Node installation method.
-- Node.js 22 or later and its bundled npm. Prefer the current Homebrew `node` formula so both are modern.
-- GitLab CLI (`glab`) with a successful `glab auth status` for the intended GitLab host.
-- Netlify CLI (`netlify`) with a successful `netlify status` for the intended account/team.
+Require:
 
-If Homebrew exists but Node.js or npm is absent or Node is older than 22, propose `brew install node` or `brew upgrade node`; show the version that will be replaced where applicable. If Homebrew is absent, ask permission before installing it; do not use a curl-to-shell installer without explicit approval. After Node is available, install missing CLIs with npm (`npm install --global @gitlab-org/cli` and `npm install --global netlify-cli`) only after approval, then re-run the preflight.
+- Homebrew
+- Node.js 22 or later and its bundled npm
+- GitLab CLI (`glab`) authenticated to `gitlab.artcom.de`
+- Netlify CLI (`netlify`) authenticated to the intended ART+COM Netlify team
 
-If `glab auth status` fails, use `glab auth login` interactively. If `netlify status` fails, use `netlify login` interactively. Do not request or paste access tokens into chat, files, shell history, or command arguments.
+If anything is missing or outdated, say: “Your computer needs a few setup tools before we can start. Shall I install or update them now?” On confirmation, repair the prerequisites in this order:
 
-## 3. Scaffold or prepare the app
+1. If Homebrew is missing, ask separately before installing it because its official installer changes system-wide configuration. Do not run a curl-to-shell installer without that confirmation.
+2. If Node.js is missing or older than 22, run `brew install node` or `brew upgrade node`.
+3. If `glab` is missing, run `brew install glab`.
+4. If `netlify` is missing, run `npm install --global netlify-cli` after Node/npm are ready.
+5. Re-run the preflight script.
 
-For a new Vite React TypeScript project, use the confirmed target directory and run:
+If GitLab login is missing, tell the user: “A browser window will open so you can sign in to ART+COM GitLab.” Then run `glab auth login --hostname gitlab.artcom.de` and wait for them to finish. If Netlify login is missing, say the equivalent and run `netlify login`. Re-run the preflight until every required item is ready. Do not ask users to copy tokens into chat or files.
+
+## 3. Create the project
+
+For a new project, create it only after all readiness checks succeed. Explain the selected stack in one sentence, then scaffold it:
 
 ```bash
+# Content site
+npm create astro@latest <project-name>
+
+# Interactive or 3D experience
 npm create vite@latest <project-name> -- --template react-ts
 cd <project-name>
 npm install
+
+# Add this only for 3D
+npm install three @react-three/fiber @react-three/drei
 ```
 
-For an existing project, install only the dependencies needed for the requested feature. Run its existing lint, typecheck, test, and build commands where available; otherwise run `npm run build` after inspecting `package.json`.
+For an existing project, inspect `package.json`, identify its current framework and commands, and extend it without replacing its configuration, lockfile, or deployment setup.
 
-Create `.env.example` with only variable names and non-sensitive placeholders. Ensure real `.env*` files are ignored by Git. Never put real broker addresses or credentials in source files, `netlify.toml`, commits, or output.
+Create a minimal working first screen that reflects the user’s description. For a 3D project, include a visible, interactive Three.js scene; do not merely install the packages. For a content site, include the requested page structure and sample content. For an interactive app, include the main interaction or data-state shape. Keep the first version small and runnable.
 
-## 4. Add MQTT only when requested
+Create `.env.example` with names and safe placeholders only. Ensure real `.env*` files are ignored by Git. Never put real broker URLs, credentials, or Netlify secrets in source code, `netlify.toml`, commits, or output.
 
-If MQTT is requested, first fetch the current ART+COM MQTT skill from:
+## 4. Add live MQTT data only when wanted
+
+If MQTT is selected, fetch the current ART+COM MQTT skill from:
 
 ```text
 https://raw.githubusercontent.com/artcom/agent-skills/main/skills/mqtt-topping/SKILL.md
 ```
 
-The documented package installation is `npm install mqtt-topping` (not an `npx` command). Install it only after confirmation. It requires Node.js 22 or later.
+After confirmation, run `npm install mqtt-topping`. It requires Node.js 22 or later.
 
-Use `PUBLIC_BROKER` only for non-secret browser-safe configuration. Keep `INTERNAL_BROKER` server-side: a Vite `VITE_*` variable is embedded into client code, so never expose `INTERNAL_BROKER` by renaming it or reading it in frontend code. Apply the MQTT skill's requirements, including parse-error handling and explicit `retain: false` for transient commands/events.
+Use `PUBLIC_BROKER` only for browser-safe, non-secret connection information. Keep `INTERNAL_BROKER` server-side; do not expose it through a `VITE_*` variable or browser code. Follow the MQTT skill's parse-error, background-error, QoS, and retained-message guidance. Explicitly use `retain: false` for transient commands and events.
 
-If ART+COM publishes a separate `npx` installer for the MQTT skill, ask for its exact package and command before using it. Do not infer one from the GitHub URL.
+## 5. Give every new prototype its shared home
 
-## 5. Create and link the GitLab and Netlify projects
+New ART+COM prototypes belong in the `prototypes` group on `https://gitlab.artcom.de`. Do not ask the user to choose a namespace. Before creating the remote project, say: “I’ll create a private project at `https://gitlab.artcom.de/prototypes/<project-name>` and connect this folder to it. Shall I continue?”
 
-After confirmation, initialise Git if necessary, create a GitLab project in the selected namespace with `glab repo create`, configure the remote, make an initial commit only with the user's approval, and push the default branch. Use the GitLab CLI's interactive prompts if namespace or visibility flags differ in the installed version.
-
-From the project root, create/link the Netlify project interactively with:
+After confirmation, initialise Git if necessary, then create the project with the ART+COM host explicitly selected:
 
 ```bash
-netlify init
+GITLAB_HOST=gitlab.artcom.de glab repo create prototypes/<project-name> --private --defaultBranch main
 ```
 
-Select the confirmed Netlify team and either create a new site or link the existing intended site. Preserve the generated `.netlify/state.json` as a local-only file; do not commit it. Configure the build command and publish directory from the actual framework. Run `netlify build` before the first production deploy, then offer `netlify deploy --prod` only after confirmation.
+Verify the `origin` remote points to `gitlab.artcom.de/prototypes/<project-name>`. Add or correct it only after checking that no intended remote already exists. Make the first commit and push only after the user approves the summary of files that will be shared.
 
-## 6. Verify broker variables safely
+For an existing project, retain its current remote unless the user explicitly asks to create or replace it with a project under `prototypes`.
 
-After the site is linked, verify that `PUBLIC_BROKER` and `INTERNAL_BROKER` are available to the project with:
+## 6. Connect Netlify and broker configuration
 
-```bash
-netlify env:list --json
-```
+From the project root, explain: “I’ll create a Netlify project for this prototype so it has a shareable link.” Obtain confirmation, then run `netlify init`, select the authenticated ART+COM team, and create a new site or link the exact existing site the user names. Keep `.netlify/state.json` local only.
 
-Check names, scopes, and deploy contexts only; do not print values. Ensure `INTERNAL_BROKER` includes the Functions scope when it is used by Netlify Functions, and use the minimum scope needed for `PUBLIC_BROKER`.
+Set the build command and publish directory for the selected framework. Run the local build first, then offer the first production deployment with `netlify deploy --prod` only after confirmation.
 
-Netlify CLI sets **site** variables. Shared **team** variables require a Team Owner and must be created through Netlify's API or the Team settings → Environment variables UI. If either required variable is missing, do not create a site-level override: report the missing name and ask the Team Owner to create the shared variable, or obtain explicit approval to use the Netlify API for the selected team. Re-run the safe verification after it is configured.
+After linking, run `netlify env:list --json` and check only whether `PUBLIC_BROKER` and `INTERNAL_BROKER` exist with appropriate scopes and deploy contexts; never show their values. `INTERNAL_BROKER` needs the Functions scope when it is used by a Netlify Function.
 
-## 7. Finish with evidence
+Netlify CLI can create site variables, but ART+COM broker variables must remain shared team variables. If either name is missing, do not create a site-specific replacement. Tell the user which name is missing and ask a Netlify Team Owner to add it in Team settings → Environment variables, or obtain explicit approval to use the Netlify API for the selected team. Re-check once configured.
 
-Report the target path, framework, Node/npm versions, GitLab project URL, Netlify site URL, successful build/deploy result, and which broker variable names were verified. State any intentionally skipped optional step and the reason.
+## 7. Finish in plain language
+
+Summarize the prototype folder, chosen approach and reason, GitLab URL, Netlify URL, build/deploy result, and whether live MQTT was added. State any blocked step in ordinary language and give the one action the user needs to take next.

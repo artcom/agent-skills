@@ -30,7 +30,7 @@ report_version "npm" npm --version
 report_command "glab" "glab"
 report_command "netlify" "netlify"
 
-if command -v glab >/dev/null 2>&1 && glab auth status >/dev/null 2>&1; then
+if command -v glab >/dev/null 2>&1 && glab auth status --hostname gitlab.artcom.de >/dev/null 2>&1; then
   printf '%-14s authenticated\n' "glab auth"
 else
   printf '%-14s needs login\n' "glab auth"
