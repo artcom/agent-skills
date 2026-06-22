@@ -35,7 +35,7 @@ npx skills add artcom/agent-skills --skill mqtt-topping -g
 
 Skills are symlinked into your project's `.agents/skills/` directory and become available to your AI agent automatically. Use `--copy` if you prefer independent copies instead of symlinks.
 
-## Updating and releases
+## Updating installed skills
 
 Update an installed skill to the latest published version with:
 
@@ -44,6 +44,28 @@ npx skills update ac-prototype-workflow -p -y
 ```
 
 Skills.sh updates from the original source; it does not define a per-skill version field. Use annotated, per-skill Semantic Versioning Git tags for immutable releases, for example `ac-prototype-workflow-v0.2.0`. Create a patch tag for fixes, a minor tag for backwards-compatible behavior, and a major tag for breaking workflow changes. Keep `main` as the latest version.
+
+## Versioning and releasing skills
+
+Version each skill independently with an annotated tag named `<skill-name>-vMAJOR.MINOR.PATCH`. The tag, not the repository-wide commit count, is the immutable release identifier. `main` remains the current development and installation source.
+
+- **Patch** (`v0.1.1`): Correct instructions, scripts, or examples without changing the expected workflow.
+- **Minor** (`v0.2.0`): Add a backwards-compatible capability, integration, or optional workflow step.
+- **Major** (`v1.0.0`): Remove or rename a skill, or change required workflow behavior, defaults, or integration contracts in a way that existing users must adapt to.
+
+For each release:
+
+1. Merge the skill change to `main` and validate the affected skill.
+2. Create an annotated tag on that exact commit, with a short release summary:
+
+   ```bash
+   git tag -a ac-prototype-workflow-v0.1.1 -m "Release ac-prototype-workflow v0.1.1"
+   git push origin ac-prototype-workflow-v0.1.1
+   ```
+
+3. Describe the user-visible change in the annotated tag message or the Git hosting release notes.
+
+`skills-lock.json` records a content hash for an installed copy. It helps detect whether a local copy matches its source, but it is not a release version. To identify a release, use the per-skill Git tag.
 
 ## Repository Structure
 
