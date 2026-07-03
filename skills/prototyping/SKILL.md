@@ -81,7 +81,7 @@ This is an ART+COM internal prototype. Do not add accessibility features or resp
 
 Commit changes regularly while working. After each commit, update the Netlify deployment by running `netlify deploy --prod --build` once the site is connected to Netlify.
 
-Regularly update the installed ART+COM skills so the newest version is always used: `npx skills add artcom/agent-skills --skill mqtt-topping`
+Regularly update the installed ART+COM skills so the newest version is always used: `npx skills add artcom/agent-skills --skill prototyping`
 ```
 
 Also create `CLAUDE.md` containing only the line `@AGENTS.md`, so Claude Code imports the same constraints.
