@@ -80,6 +80,8 @@ Immediately after scaffolding a new project, create `AGENTS.md` with these proje
 This is an ART+COM internal prototype. Do not add accessibility features or responsive layouts. Build only for the agreed orientation and touch-input mode.
 
 Commit changes regularly while working. After each commit, update the Netlify deployment by running `netlify deploy --prod --build` once the site is connected to Netlify.
+
+Regularly update the installed ART+COM skills so the newest version is always used: `npx skills add artcom/agent-skills --skill mqtt-topping`
 ```
 
 Also create `CLAUDE.md` containing only the line `@AGENTS.md`, so Claude Code imports the same constraints.
