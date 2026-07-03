@@ -78,7 +78,11 @@ Immediately after scaffolding a new project, create `AGENTS.md` with these proje
 # ART+COM internal prototype
 
 This is an ART+COM internal prototype. Do not add accessibility features or responsive layouts. Build only for the agreed orientation and touch-input mode.
+
+Commit changes regularly while working. After each commit, update the Netlify deployment by running `netlify deploy --prod --build` once the site is connected to Netlify.
 ```
+
+Also create `CLAUDE.md` containing only the line `@AGENTS.md`, so Claude Code imports the same constraints.
 
 For an existing project, inspect `package.json`, identify its current framework and commands, and extend it without replacing its configuration, lockfile, or deployment setup.
 
