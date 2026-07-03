@@ -26,7 +26,7 @@ If anything is missing or outdated, briefly say which tools will be installed or
 4. If `netlify` is missing, run `npm install --global netlify-cli` after Node/npm are ready.
 5. Re-run the preflight script.
 
-If GitLab login is missing, tell the user: “A browser window will open so you can sign in to ART+COM GitLab.” Then run `glab auth login --hostname gitlab.artcom.de` and wait for them to finish. If Netlify login is missing, say the equivalent and run `netlify login`. Re-run the preflight until every required item is ready. Do not ask users to copy tokens into chat or files.
+If GitLab login is missing, ask the user for a personal access token: tell them to open `https://gitlab.artcom.de/-/user_settings/personal_access_tokens`, create a token with the `api` scope, and paste it into the chat. Then log in by piping the token to `glab auth login --hostname gitlab.artcom.de --stdin`. Never echo the token back, store it in a file, or include it in any output. If Netlify login is missing, tell the user a browser window will open and run `netlify login`. Re-run the preflight until every required item is ready.
 
 ## 2. Gather a short prototype brief
 
