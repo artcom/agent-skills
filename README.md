@@ -8,6 +8,7 @@ A collection of reusable [AI agent skills](https://skills.sh/) by [ART+COM](http
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [prototyping](/skills/prototyping/SKILL.md) | Scaffold and deploy ART+COM web prototypes with GitLab, Netlify, and optional MQTT support |
 | [mqtt-topping](/skills/mqtt-topping/SKILL.md) | Connect to MQTT brokers, subscribe/publish messages, and query retained data over HTTP using [mqtt-topping](https://github.com/artcom/mqtt-topping) |
+| [figma-to-react](/skills/figma-to-react/SKILL.md) | Translate a Figma design into React code that matches the target project's own styling, tokens, and components |
 
 ## Installation
 
