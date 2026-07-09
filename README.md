@@ -102,6 +102,19 @@ skills/
 
 Every skill directory must contain a `SKILL.md` with YAML frontmatter (`name`, `description`) and markdown instructions. The description drives when the AI agent activates the skill — it should cover both what the skill does and the contexts in which it's useful.
 
+## Developing a Skill Locally
+
+Installing via `npx skills add` copies or symlinks a snapshot — editing `skills/<name>/SKILL.md` afterward doesn't affect what your agent sees. `dev-link.sh` symlinks a skill's folder straight from this repo into an agent's global skills directory, so edits are picked up immediately with no reinstall step:
+
+```bash
+./dev-link.sh link              # link every skill to Claude Code
+./dev-link.sh link prototyping  # link just one skill
+./dev-link.sh status            # show what's currently linked
+./dev-link.sh unlink prototyping
+```
+
+When you're done, `unlink` and go back to the published version with `npx skills update`.
+
 ## Adding a New Skill
 
 1. Create a new directory under `skills/<skill-name>/`
