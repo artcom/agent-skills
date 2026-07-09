@@ -24,7 +24,7 @@ npx skills add artcom/agent-skills --skill mqtt-topping
 # Install the prototyping skill
 npx skills add artcom/agent-skills --skill prototyping
 
-# Install all skills
+# Install all skills, to every detected agent
 npx skills add artcom/agent-skills --all
 
 # Install to specific agents only
@@ -32,9 +32,26 @@ npx skills add artcom/agent-skills --skill mqtt-topping -a claude-code
 
 # Install globally (available across all projects)
 npx skills add artcom/agent-skills --skill mqtt-topping -g
+
+# Install all skills, globally, to Claude Code only
+npx skills add artcom/agent-skills --skill '*' -a claude-code -g -y
 ```
 
+> **Gotcha:** `--all` always installs to every detected agent and ignores an `-a` filter — running
+> `--all -a claude-code` still fans out into every agent's folder. To scope "all skills" to one
+> agent, use `--skill '*'` instead of `--all`, as in the last example above.
+
 Skills are symlinked into your project's `.agents/skills/` directory and become available to your AI agent automatically. Use `--copy` if you prefer independent copies instead of symlinks.
+
+Confirm what's installed for one agent with `npx skills ls -g -a claude-code`. If a previous `--all` run left skills in the wrong agents' folders, clean them up and reinstall scoped:
+
+```bash
+# Remove all globally-installed skills from every agent
+npx skills remove --skill '*' --agent '*' -g -y
+
+# Then reinstall scoped to the agent you actually want
+npx skills add artcom/agent-skills --skill '*' -a claude-code -g -y
+```
 
 ## Updating installed skills
 
