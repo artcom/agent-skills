@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.1.0
+  version: 1.2.0
   author: ART+COM
 ---
 
@@ -10,7 +10,10 @@ metadata:
 
 Rules for turning a Figma design into React code. This skill is deliberately stack-agnostic: detect
 the target project's real conventions first, then follow them — never impose a styling system,
-resolution, or constraint the project doesn't already have.
+resolution, or constraint the project doesn't already have. The one exception is **component
+structure**: when the project has no real components to conform to, follow the Figma component
+hierarchy instead of collapsing the design into one file — see "Component structure & granularity"
+in section 1.
 
 ## 1. Learn the project before touching Figma
 
@@ -36,6 +39,36 @@ resolution, or constraint the project doesn't already have.
 - Keep new dependencies in whatever section (`dependencies` vs `devDependencies`) the project's
   existing packages use for comparable tools — some deployment setups (e.g. buildpack-based hosts)
   require everything in `dependencies`.
+
+### Component structure & granularity (decide before implementing)
+
+Figma designs are built from components and instances (e.g. a `MetricCard`, a `Tag`, a `Panel`, a
+table row). The **default target is one code component per meaningful Figma component/node**, composed
+to mirror the design's hierarchy — not a single monolithic component for the whole screen. Which
+structure you actually use depends on what already exists in the repo:
+
+- **Empty or near-empty project** — no real UI components yet, or only starter/demo scaffolding (e.g.
+  a Vite counter `App.jsx`, a single stylesheet, no component directory or shared components): **use
+  the Figma structure.** Create a component for each meaningful Figma component/node and compose them,
+  establishing the hierarchy and naming from the design. Do **not** collapse the whole screen into one
+  monolithic component just because the starter happened to be a single file — a bare starter is not a
+  convention to preserve.
+
+- **Project already contains several real components** — an established component architecture,
+  styling system, and/or token layer: do **not** silently impose the Figma structure, and do **not**
+  silently flatten the design to fit. **Ask the user explicitly** (e.g. via `AskUserQuestion`,
+  ideally together with the section 2 question) which they want:
+  1. **Keep the existing structure** — generate the new screen within the current architecture and
+     conventions, reusing existing components and tokens (the behaviour described in section 4).
+  2. **Refactor to the Figma structure** — reorganize/rewrite so the code matches the Figma component
+     hierarchy and naming (one component per Figma node), migrating existing code as needed.
+
+  Proceed only according to the user's choice; if the run is non-interactive and the user can't be
+  asked, keep the existing structure and note the assumption in the final summary.
+
+When you do create per-node components, mirror the Figma component **names** and nesting, and — if
+`figma-sync` is opted in (section 2) — add a `// figma-sync:` annotation per component so the
+node→component mapping is explicit.
 
 ## 2. Optional companion skills — ask the user first
 
@@ -110,6 +143,9 @@ without it, and mention the gap in the final summary.
 
 ### Components
 
+- **First settle structure via the section 1 decision** ("Component structure & granularity"): in an
+  empty/near-empty project, or when the user chose to refactor, create one component per meaningful
+  Figma node mirroring the design hierarchy; otherwise generate within the existing structure as below.
 - New UI components go wherever the project already keeps them, following its existing naming and
   file-organization convention (co-located styles, index files, folder-per-component, etc.) — mirror
   an existing component's layout exactly.
