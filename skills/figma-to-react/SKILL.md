@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.0.0
+  version: 1.1.0
   author: ART+COM
 ---
 
@@ -37,7 +37,40 @@ resolution, or constraint the project doesn't already have.
   existing packages use for comparable tools — some deployment setups (e.g. buildpack-based hosts)
   require everything in `dependencies`.
 
-## 2. Required flow (do not skip)
+## 2. Optional companion skills — ask the user first
+
+Three companion skills can extend this workflow. All three are **optional**: none of them is
+required to translate a design, and none may be used without the user's consent. After learning
+the project (section 1) and **before implementing**, check which of them are relevant to this
+project, then ask the user **once, in a single question** (multi-select, e.g. via
+`AskUserQuestion`) which ones to use for this task. Skip any the user declines and don't ask
+again in the same session. In a non-interactive run where the user cannot be asked, skip all
+three and note that in the final summary.
+
+- **`figma-sync`** — keeps generated components verifiably in sync with their Figma nodes.
+  Relevant when the project has a `.figma-sync/` directory, an `@artcom/figma-sync` dependency,
+  or `figma:*` scripts in `package.json`. If the user opts in: keep existing
+  `// figma-sync: file=<fileKey> node=<nodeId> name=<ComponentName>` annotations intact, add one
+  to each newly implemented component, and after implementation re-baseline with the project's
+  update-manifest script (e.g. `npm run figma:update-manifest`), confirming the status script
+  (e.g. `npm run figma:status`) reports `[SYNC]` for the touched components.
+
+- **`react-pixel-overlay`** — a PerfectPixel-style overlay for pixel-perfect QA. Relevant when
+  the project depends on `react-pixel-overlay` / `@artcom/react-pixel-overlay` (or mounts a
+  `PixelOverlay` component). If the user opts in: export the implemented Figma frame as a PNG at
+  the exact target resolution into the project's overlay sources folder (commonly
+  `public/design-overlays/`), then verify the running app under the overlay — difference blend
+  mode makes any deviation light up — as part of the Verification step.
+
+- **`config-content-assets`** — the project's convention for separating configuration, content,
+  and assets from component code. If the user opts in and the skill is installed, invoke it and
+  follow its instructions for where downloaded Figma assets, copy/text content, and configurable
+  values belong instead of hardcoding them into components.
+
+If a skill the user chose turns out not to be available in this project, say so, continue
+without it, and mention the gap in the final summary.
+
+## 3. Required flow (do not skip)
 
 1. **Get the design context** for the exact node(s): call the Figma MCP tool that returns the
    structured node representation (`get_design_context`; some connectors name it `get_code`).
@@ -49,12 +82,12 @@ resolution, or constraint the project doesn't already have.
 5. **Search the project's component directory for an existing component to reuse** before writing
    anything new. Reuse is mandatory — only create a new component if nothing fits.
 6. Only after you have context + screenshot + reuse decision: download any needed assets, then
-   implement.
+   implement — applying whichever companion skills the user opted into (section 2).
 7. **Verify 1:1** against the screenshot (see Verification) before marking the task complete.
 
-## 3. Implementation rules
+## 4. Implementation rules
 
-- Treat MCP output as a *representation* of design and behavior, not as final code. Rewrite it into
+- Treat MCP output as a _representation_ of design and behavior, not as final code. Rewrite it into
   the project's own idioms (its component style, file layout, and styling approach).
 - Map Figma **Auto Layout** directly to `display: flex` / `display: grid` (or the equivalent utility
   classes) with the exact gaps, padding, and sizes from the node data — do not approximate spacing.
@@ -84,7 +117,7 @@ resolution, or constraint the project doesn't already have.
 - Match the project's existing font-loading approach (`@font-face`, a font package, a web-font link,
   etc.) for any typeface Figma specifies.
 
-## 4. Anti-hallucination constraints
+## 5. Anti-hallucination constraints
 
 - **No guessing styles.** If a property (`border`, `box-shadow`, `border-radius`…) is not in the
   Figma node data, do not add it to the CSS.
@@ -99,13 +132,16 @@ resolution, or constraint the project doesn't already have.
 - **Truncated data:** never fill gaps with assumptions — use `get_metadata` then re-fetch the real
   node(s).
 
-## 5. Verification
+## 6. Verification
 
 - After the first implementation, re-fetch `get_screenshot` and compare against the rendered code.
 - Fix any layout drift, spacing mismatch, wrong color, or extra border **before** finishing. If the
   screenshot has a clean background but your CSS added a border, remove it.
 - Run the app with its own dev command from `package.json` (a `/run` skill, if installed, can launch
   it for you) to visually confirm.
+- If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
+  exported design image.
+- If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
 - Lint using the project's own lint command before finishing.
 
 ## Setup note

@@ -11,6 +11,7 @@ A collection of reusable [AI agent skills](https://skills.sh/) by [ART+COM](http
 | [figma-to-react](/skills/figma-to-react/SKILL.md) | Translate a Figma design into React code that matches the target project's own styling, tokens, and components |
 | [config-content-assets](/skills/config-content-assets/SKILL.md) | Externalize hard-coded texts and media into the configuration repository and storage/asset server (via `${storageServerUri}`) so content and assets update without redeploying |
 | [react-pixel-overlay](/skills/react-pixel-overlay/SKILL.md) | Set up and use [react-pixel-overlay](https://github.com/artcom/react-pixel-overlay), the PerfectPixel-style design overlay for verifying pixel-perfect React implementations against design exports |
+| [figma-sync](/skills/figma-sync/SKILL.md) | Track drift between Figma designs and generated code with the `figma-sync` CLI — baseline design + code hashes, report sync status per component, and gate CI on design drift |
 
 ## Installation
 
