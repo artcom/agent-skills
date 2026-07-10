@@ -117,6 +117,28 @@ without it, and mention the gap in the final summary.
 - Match the project's existing font-loading approach (`@font-face`, a font package, a web-font link,
   etc.) for any typeface Figma specifies.
 
+### Strokes / borders (do not translate a Figma Stroke to a CSS `border`)
+
+A Figma **Stroke is layout-neutral**: padding is measured from the frame's bounds and the stroke is
+painted on that edge, so adding/removing a stroke never moves the frame's children. A CSS **`border`
+is part of the box model**: with `box-sizing: border-box` it pushes all content inward by the stroke
+width (and shrinks the content area); with `content-box` it grows the frame. Either way a plain
+`border` on a fixed-size, padded auto-layout frame **shifts content or resizes the box** versus the
+design — most visibly when only one variant (hover, selected, alert) carries the stroke, so its text
+drops off the baseline shared by the others.
+
+- Translate a decorative stroke to a **layout-neutral ring**: `box-shadow: inset 0 0 0 <w> <color>`
+  or `outline: <w> solid <color>; outline-offset: -<w>` — never a plain `border` — so the content
+  position is identical to the un-stroked variant.
+- **Respect stroke alignment.** *Inside* → inset ring (stays within the frame footprint; keeps gaps
+  between siblings intact). *Outside* → outset ring (`box-shadow: 0 0 0 <w>` / `outline`), but note
+  it is painted beyond the frame and **eats into the gap** to adjacent elements — only use it when
+  the design's stroke is genuinely outside. *Center* → split the width across an inset+outset pair.
+  When alignment is ambiguous, an inside-aligned inset ring is the safe default and matches most
+  component states.
+- **When a variant differs from its base only by a stroke,** make sure the base reserves the same
+  space (e.g. a transparent inset ring / border) so switching states causes zero reflow.
+
 ## 5. Anti-hallucination constraints
 
 - **No guessing styles.** If a property (`border`, `box-shadow`, `border-radius`…) is not in the
@@ -125,7 +147,8 @@ without it, and mention the gap in the final summary.
   hex is within ~5% brightness of an existing token, use the token. If there's no close match,
   **ask before proceeding** — never invent a value.
 - **Ghost outlines.** Only add `outline`/`border` if it exists as an explicit **Stroke** in Figma.
-  Never add borders for visual separation the design doesn't have.
+  Never add borders for visual separation the design doesn't have. And when a Stroke *does* exist,
+  render it as a layout-neutral ring, not a `border` — see "Strokes / borders" in section 4.
 - **No absolute positioning** unless the Figma layer is explicitly "Absolute position".
 - **Zero-margin policy.** All spacing comes from Figma Auto Layout → tokens/px. Don't rely on
   default browser margins/paddings.
