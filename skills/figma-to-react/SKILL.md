@@ -115,7 +115,12 @@ without it, and mention the gap in the final summary.
   convention), then reference it. Do **not** invent extra component-level alias layers that the
   design doesn't define.
 - Match the project's existing font-loading approach (`@font-face`, a font package, a web-font link,
-  etc.) for any typeface Figma specifies.
+  etc.) for any typeface Figma specifies. **Don't assume the design font is missing/substituted** —
+  it may already be installed at the OS level (so the browser renders it directly from a family-name
+  reference with no `@font-face`) or bundled. Verify before attributing any layout difference to the
+  font; text metrics (wrapping, clipping, ellipsis) usually diverge because of a CSS property, not the
+  typeface. If the font is only OS-installed and the app must render identically elsewhere, note that
+  bundling it via `@font-face` is a separate portability task.
 
 ### Strokes / borders (do not translate a Figma Stroke to a CSS `border`)
 
@@ -138,6 +143,23 @@ drops off the baseline shared by the others.
   component states.
 - **When a variant differs from its base only by a stroke,** make sure the base reserves the same
   space (e.g. a transparent inset ring / border) so switching states causes zero reflow.
+
+### Text wrapping & line breaks
+
+- **Keep a text layer as one string; let CSS soft-wrap it.** Do not split a label into multiple
+  spans joined by synthesized `<br>`s to force the design's line breaks — each span then soft-wraps on
+  its own and the result diverges from the source text (and often clips). Port the layer's actual
+  string and its white-space mode.
+- **Reproduce where the design wraps, which means reproducing the wrap *width*.** A Figma text box
+  often hugs its content and is allowed to run into the frame's padding before wrapping, so a line can
+  be wider than the padded content box. If you constrain wrapping to `frame − 2×padding`, a long line
+  breaks too early (one word too soon). Check where the design actually wraps and give the text that
+  width (e.g. `width: calc(100% + <padding>)` to let it use the padding up to the frame edge), rather
+  than adding a manual break.
+- **Don't clip text horizontally.** An `overflow: hidden` added only to bound height will also cut off
+  text that legitimately overflows the padding. Bound height without clipping width.
+- **Verify against the widest realistic content, not just the sampled string** — a header/label that
+  fits the sampled data can still wrap or clip on a longer value.
 
 ## 5. Anti-hallucination constraints
 
