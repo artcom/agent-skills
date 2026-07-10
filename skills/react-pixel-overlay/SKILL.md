@@ -30,10 +30,10 @@ metadata:
 1. **Install** (match the project's convention for `dependencies` vs `devDependencies` — some deployment setups need everything in `dependencies`):
 
    ```sh
-   npm install react-pixel-overlay
+   npm install @artcom/react-pixel-overlay
    ```
 
-   If the package isn't available from the registry yet, install it as a git dependency (`"react-pixel-overlay": "github:artcom/react-pixel-overlay"`) or from a local checkout (`"file:../react-pixel-overlay"`).
+   The package is published on npm under the `@artcom` scope — the resulting entry must be `"@artcom/react-pixel-overlay": "^0.1.0"` (never an unscoped `react-pixel-overlay` key). As a fallback it can also be installed as a git dependency (`"@artcom/react-pixel-overlay": "github:artcom/react-pixel-overlay"`) or from a local checkout (`"file:../react-pixel-overlay"`).
 
 2. **Create the overlay folder** and put design exports in it: `public/design-overlays/`. Export each design at the app's exact target resolution (e.g. a 3840×2160 artboard for a 4K screen) — the image renders at natural size from the page's top-left corner. Name files after the screen they show (`app.png`, `settings.png`).
 
@@ -41,7 +41,7 @@ metadata:
 
    ```js
    // vite.config.js
-   import { pixelOverlaySources } from "react-pixel-overlay/vite"
+   import { pixelOverlaySources } from "@artcom/react-pixel-overlay/vite"
 
    export default defineConfig({
      plugins: [react(), pixelOverlaySources()], // default folder: public/design-overlays/
@@ -53,9 +53,9 @@ metadata:
 4. **Mount the component, gated so it never ships to end users.** The established ART+COM pattern is dev builds plus a `?overlay` URL escape hatch for production builds:
 
    ```jsx
-   import { PixelOverlay } from "react-pixel-overlay"
+   import { PixelOverlay } from "@artcom/react-pixel-overlay"
    // eslint-disable-next-line import/no-unresolved -- exports subpath, resolved by Vite
-   import "react-pixel-overlay/styles.css"
+   import "@artcom/react-pixel-overlay/styles.css"
    // eslint-disable-next-line import/no-unresolved -- virtual module from pixelOverlaySources()
    import overlaySources from "virtual:pixel-overlay-sources"
 
@@ -89,13 +89,13 @@ metadata:
 
 2. **Images render at natural size.** There is no automatic fit-to-viewport. Export designs at the exact target resolution; the panel's scale input is a fallback, not the workflow.
 
-3. **`import/no-unresolved` false positives.** `eslint-plugin-import` can't resolve the `react-pixel-overlay/styles.css` exports subpath or the `virtual:pixel-overlay-sources` module. Both need an `// eslint-disable-next-line import/no-unresolved` (see the mount example above).
+3. **`import/no-unresolved` false positives.** `eslint-plugin-import` can't resolve the `@artcom/react-pixel-overlay/styles.css` exports subpath or the `virtual:pixel-overlay-sources` module. Both need an `// eslint-disable-next-line import/no-unresolved` (see the mount example above).
 
 4. **Not using Vite?** Skip the plugin and pass any `string[]` or `{ label, src }[]` to `sources` — e.g. from a hand-written manifest file. Only the folder-scanning plugin is Vite-specific; the component itself is bundler-agnostic.
 
 5. **Dropped images and the localStorage quota.** Dropped/pasted images are persisted as data URLs; images beyond the ~5 MB quota still work but won't survive a reload (a console warning is logged). Images from `sources` are unaffected.
 
-6. **TypeScript consumers**: type the virtual module by referencing `react-pixel-overlay/virtual` in tsconfig `types`.
+6. **TypeScript consumers**: type the virtual module by referencing `@artcom/react-pixel-overlay/virtual` in tsconfig `types`.
 
 ## Typical QA workflow
 
