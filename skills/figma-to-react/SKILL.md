@@ -91,6 +91,17 @@ without it, and mention the gap in the final summary.
   the project's own idioms (its component style, file layout, and styling approach).
 - Map Figma **Auto Layout** directly to `display: flex` / `display: grid` (or the equivalent utility
   classes) with the exact gaps, padding, and sizes from the node data — do not approximate spacing.
+- **A frame's height is not its text's line-height.** Text/label frames often reserve extra vertical
+  space (fixed frame height, or padding around the line box) beyond the glyphs. Porting only
+  `font-size` + `line-height` makes the element shorter than the design; when it sits above other
+  content, everything below shifts up. Carry the layer's **explicit frame height** (or its padding),
+  not just the type ramp — e.g. a 64px heading frame around a 60px line, or a 48px label whose text
+  line box is only ~36px.
+- **Give fixed-size children `flex-shrink: 0` inside an overflowing flex container.** Figma frames that
+  overflow are *clipped* (overflow-clip), not shrunk. A CSS flex container whose content overflows will
+  instead shrink its children by default, silently undoing an explicit `height`/`width` you just set.
+  Mark fixed-dimension children `flex-shrink: 0` so they keep their design size and the container clips,
+  matching Figma.
 - Reuse tokens, existing components, and typography wherever possible. Match the surrounding code's
   naming and structure.
 - Respect existing routing, state, and data-fetch patterns already in the repo.
@@ -182,6 +193,12 @@ drops off the baseline shared by the others.
 - After the first implementation, re-fetch `get_screenshot` and compare against the rendered code.
 - Fix any layout drift, spacing mismatch, wrong color, or extra border **before** finishing. If the
   screenshot has a clean background but your CSS added a border, remove it.
+- **When alignment drifts in a repeated list/table, measure pitch vs. offset before guessing.** A
+  *constant* offset across all items means a one-time height mismatch in an element **above** the list
+  (see "A frame's height is not its text's line-height"); a *growing* offset means a per-item pitch
+  error (wrong row height or an unexpected gap). Measuring the position of repeating landmarks (e.g.
+  alternating row backgrounds) in the render vs. the design export tells the two apart objectively and
+  points straight at the cause.
 - Run the app with its own dev command from `package.json` (a `/run` skill, if installed, can launch
   it for you) to visually confirm.
 - If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
