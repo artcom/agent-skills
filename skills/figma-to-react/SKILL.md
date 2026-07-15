@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.3.0
+  version: 1.4.0
   author: ART+COM
 ---
 
@@ -14,6 +14,22 @@ resolution, or constraint the project doesn't already have. The one exception is
 structure**: when the project has no real components to conform to, follow the Figma component
 hierarchy instead of collapsing the design into one file — see "Component structure & granularity"
 in section 1.
+
+## 0. Preflight the Figma file first (prevent, don't compensate)
+
+Many §7 pixel-fidelity gotchas are not code-reading failures — they are **Figma hygiene problems**
+this pipeline is being asked to paper over (unbound colors, a collapsed surface-elevation ladder, a
+substituted brand font, off-ramp type, unpinned theme modes). Fixing the **source node** is strictly
+better than compensating downstream, because the compensation re-breaks every time the design is
+regenerated.
+
+Before codegen, run the [`figma-preflight`](../figma-preflight/SKILL.md) skill on the target node(s).
+It detects the source-fixable subset of §7 and either **reports** it (a checklist to verify/request
+from the designer — the safe default when you don't own the file) or **fixes** it in Figma (when the
+user owns/co-owns the file). Each source-fixable §7 bullet below is tagged **[preflight]** and points
+back here. The remaining §7 items are inherent to codegen or delivery — handle those during and after
+implementation as usual. If preflight isn't run (out of remit, non-interactive), continue with §7 as
+the downstream fallback and note it in the summary.
 
 ## 1. Learn the project before touching Figma
 
@@ -248,34 +264,39 @@ Small per-element errors — a body size off by 4px, weight 400 vs 500, an inver
 missing constraint — compound and read to the user as "everything is slightly off" even when
 the layout boxes are correct. Work through these by area.
 
+Bullets tagged **[preflight]** are **source-fixable**: prevent them upstream by running
+[`figma-preflight`](../figma-preflight/SKILL.md) before codegen (see §0) rather than compensating
+here every regeneration. Untagged bullets are inherent to codegen or delivery — this is where they
+get handled.
+
 ### Tokens & color
 
-- **Never trust the fallback literal in `var(--token, fallback)`.** Figma codegen writes
+- **[preflight]** **Never trust the fallback literal in `var(--token, fallback)`.** Figma codegen writes
   `var(--text/primary, black)`, but that trailing `black`/`white` is a generic placeholder, NOT
   the variable's value. Resolve every token via `get_variable_defs` and reference the project's
   token — using the fallback silently inverts colors (dark-bg/white-text labels become
   white-bg/black-text; white dots become black).
-- **Don't assume the page background is the `background` token — check the frame's fill.** A
+- **[preflight]** **Don't assume the page background is the `background` token — check the frame's fill.** A
   token named `fills/background` (e.g. #000) does not mean the screen uses it; a design often
   fills the whole screen with a `surface` color and reserves the near-black token for
   insets/pills. Sample the actual frame fill (cheap: crop a ~20px corner, read one pixel).
-- **Preserve the surface-elevation ladder — don't collapse near-identical neutrals.** Keep the
+- **[preflight]** **Preserve the surface-elevation ladder — don't collapse near-identical neutrals.** Keep the
   RELATIVE order (e.g. card lighter than page, tiles/rows lighter than card, inset panels darker
   than card). Shift the whole ladder one step and nested insets that share a token with their
   parent lose all contrast and **vanish** — when a panel looks missing, suspect the parent
   surface token before adding borders/shadows.
 - **Color data-driven marks by their value, not one accent** (e.g. gauge/waveform bars that are
   an accent color only past a threshold, dimmed otherwise). Read the per-mark color from assets.
-- **An isolated component render can be in a different theme mode than the screen.** If the
+- **[preflight]** **An isolated component render can be in a different theme mode than the screen.** If the
   `get_design_context` preview looks inverted vs. the overview export, trust the full-frame
   export and screen-level token values (ground truth), not the isolated preview.
 
 ### Type & fonts
 
-- **Read exact type per text node — never eyeball it.** Pull `font-size`, `font-weight`,
+- **[preflight]** **Read exact type per text node — never eyeball it.** Pull `font-size`, `font-weight`,
   `line-height`, letter-spacing, and container padding/gap from `get_design_context`. A value
   outside the design's type ramp (e.g. `24px` when the ramp is 20/26/40/72) is a tell you guessed.
-- **An off-brand `font-['Inter:…']` in the codegen usually means the Figma file is missing that
+- **[preflight]** **An off-brand `font-['Inter:…']` in the codegen usually means the Figma file is missing that
   weight of the brand font** and substituted a system font for just those layers. This is a
   decision, not an auto-fix: surface it — keep the brand font (correct for production) or bundle
   the fallback to match the mockup 1:1. Don't silently ship a non-brand font or silently "correct" it.
@@ -301,13 +322,13 @@ the layout boxes are correct. Work through these by area.
 
 ### Layout, spacing & constraints
 
-- **Carry size constraints, not just padding/color — `min-width`/`min-height`/`max-width`.** A
+- **[preflight]** **Carry size constraints, not just padding/color — `min-width`/`min-height`/`max-width`.** A
   button's `min-w-[160px]` keeps a short label a full-width pill; a text block's `max-w-[Npx]`
   sets the wrap point (a body wrapping "too late" is usually a missing `max-width`, not a font bug).
-- **Match the design's flex alignment** (`items-end` vs `center`) and let heights be
+- **[preflight]** **Match the design's flex alignment** (`items-end` vs `center`) and let heights be
   content-driven where the design is; a header forced to `align-items: center` + fixed height
   when the design uses `items-end` shifts every title a few px.
-- **`space-between` is not "evenly spaced with fixed pitch."** It stretches repeated marks
+- **[preflight]** **`space-between` is not "evenly spaced with fixed pitch."** It stretches repeated marks
   edge-to-edge with a container-dependent pitch that drifts from the design's fixed pitch (a
   difference-overlay shows ghost "doubling"). Reproduce real pitch = mark-width + gap
   (`justify-center` + a set `gap`). Account for `stroke-linecap: round` rendering a line ~2px
