@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.2.0
+  version: 1.3.0
   author: ART+COM
 ---
 
@@ -241,6 +241,107 @@ drops off the baseline shared by the others.
   exported design image.
 - If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
 - Lint using the project's own lint command before finishing.
+
+## 7. Pixel-fidelity checklist (why a "done" screen still reads as "slightly off")
+
+Small per-element errors — a body size off by 4px, weight 400 vs 500, an inverted token, a
+missing constraint — compound and read to the user as "everything is slightly off" even when
+the layout boxes are correct. Work through these by area.
+
+### Tokens & color
+
+- **Never trust the fallback literal in `var(--token, fallback)`.** Figma codegen writes
+  `var(--text/primary, black)`, but that trailing `black`/`white` is a generic placeholder, NOT
+  the variable's value. Resolve every token via `get_variable_defs` and reference the project's
+  token — using the fallback silently inverts colors (dark-bg/white-text labels become
+  white-bg/black-text; white dots become black).
+- **Don't assume the page background is the `background` token — check the frame's fill.** A
+  token named `fills/background` (e.g. #000) does not mean the screen uses it; a design often
+  fills the whole screen with a `surface` color and reserves the near-black token for
+  insets/pills. Sample the actual frame fill (cheap: crop a ~20px corner, read one pixel).
+- **Preserve the surface-elevation ladder — don't collapse near-identical neutrals.** Keep the
+  RELATIVE order (e.g. card lighter than page, tiles/rows lighter than card, inset panels darker
+  than card). Shift the whole ladder one step and nested insets that share a token with their
+  parent lose all contrast and **vanish** — when a panel looks missing, suspect the parent
+  surface token before adding borders/shadows.
+- **Color data-driven marks by their value, not one accent** (e.g. gauge/waveform bars that are
+  an accent color only past a threshold, dimmed otherwise). Read the per-mark color from assets.
+- **An isolated component render can be in a different theme mode than the screen.** If the
+  `get_design_context` preview looks inverted vs. the overview export, trust the full-frame
+  export and screen-level token values (ground truth), not the isolated preview.
+
+### Type & fonts
+
+- **Read exact type per text node — never eyeball it.** Pull `font-size`, `font-weight`,
+  `line-height`, letter-spacing, and container padding/gap from `get_design_context`. A value
+  outside the design's type ramp (e.g. `24px` when the ramp is 20/26/40/72) is a tell you guessed.
+- **An off-brand `font-['Inter:…']` in the codegen usually means the Figma file is missing that
+  weight of the brand font** and substituted a system font for just those layers. This is a
+  decision, not an auto-fix: surface it — keep the brand font (correct for production) or bundle
+  the fallback to match the mockup 1:1. Don't silently ship a non-brand font or silently "correct" it.
+- **Fix the font before the size.** Different families size differently per px, so matching a
+  size by eye with the wrong family gives a compensating value that's wrong once the right font
+  loads. Set `font-family` first, then apply the design's real `font-size`.
+- **Carry `font-feature-settings`, not just size/weight.** The node may specify figure style
+  (`"lnum" 1, "pnum" 1` = proportional lining) vs the `tabular-nums` you'd default to; numbers
+  look "off in style" if you ignore it.
+
+### Icons
+
+- **Use the design's real icon assets — never hand-draw `<path>` data from memory.**
+  `get_design_context` returns each icon as an asset URL (usually SVG). Tint them by replacing
+  `fill="var(--fill-0, …)"` with `fill="currentColor"` and setting the parent's `color`. Inline
+  them (e.g. a small `icons.json` + one `Icon` component). Flag any stub as a placeholder.
+- **Fetch every icon node individually — same label ≠ same icon.** Sibling tags with identical
+  text can use entirely different glyphs; a message's alert icon can differ from a status row's.
+  Use the icon the specific node references, not one reused from a sibling.
+- **A layer's name can lie about geometry — verify the actual glyph.** A node named "Navigation
+  Left" may hold a right-pointing arrow (the design flips it per instance); read the path/render
+  and mirror with `scaleX(-1)` as the design does, or arrows come out reversed.
+
+### Layout, spacing & constraints
+
+- **Carry size constraints, not just padding/color — `min-width`/`min-height`/`max-width`.** A
+  button's `min-w-[160px]` keeps a short label a full-width pill; a text block's `max-w-[Npx]`
+  sets the wrap point (a body wrapping "too late" is usually a missing `max-width`, not a font bug).
+- **Match the design's flex alignment** (`items-end` vs `center`) and let heights be
+  content-driven where the design is; a header forced to `align-items: center` + fixed height
+  when the design uses `items-end` shifts every title a few px.
+- **`space-between` is not "evenly spaced with fixed pitch."** It stretches repeated marks
+  edge-to-edge with a container-dependent pitch that drifts from the design's fixed pitch (a
+  difference-overlay shows ghost "doubling"). Reproduce real pitch = mark-width + gap
+  (`justify-center` + a set `gap`). Account for `stroke-linecap: round` rendering a line ~2px
+  longer than nominal.
+- **Don't double-render baked content.** If you bake a region into one image (a map that already
+  contains rings/legend/labels), don't also re-render those elements as HTML/CSS on top — they
+  mismatch and read as doubled. One source of truth per element; if you can't get a clean asset,
+  choose the baked version deliberately and note baked text is no longer config-driven.
+
+### Verify & deliver
+
+- **Scale verification effort to the element — don't measure everything.** Default fidelity is
+  cheap and applies to every element: read exact specs (the sections above) and eyeball **one**
+  `difference`-blend overlay of your render on the design export (matching pixels go black).
+  Escalate to precise measurement only when a specific element is flagged as still-off or the
+  overlay shows drift you can't explain by eye: compare `getBoundingClientRect` to the Figma
+  coords (boxes match but text still ghosts → inherent Figma-vs-browser glyph-baseline diff, not a
+  bug to chase; boxes offset → real layout error). The canvas `getImageData` per-mark pass
+  (center/height/color arrays) is **token-expensive — reserve it for one hero/repeated element the
+  user flags**, never as a routine sweep. (See §6 for the constant-vs-growing offset diagnostic.)
+- **Beyond §3's per-node fetch, don't reconstruct a rich sub-component from the overview
+  screenshot.** A media card / carousel / chart has assets and styles you'll fake otherwise — a
+  6-thumbnail strip is six *different* images, and image crops are explicit (Figma gives
+  size/offset like `h-[152.58%] top-[-6.21%]` → replicate via `object-position`, not center `cover`).
+- **Cache-bust when overwriting a hosted asset at the same URL.** In-place replacement keeps
+  serving stale bytes to cached clients — server updated, app shows old. Version the filename or
+  add `?v=N` and update the reference. Confirm the server serves new bytes AND the app fetches
+  the new URL (separate failures).
+- **"Looks wrong but your source matches" → suspect stale delivery before re-editing.** Diff the
+  deployed asset against the design (byte size / pixel compare); if they match, the bug is
+  delivery (cache, unmounted volume, stale dev bundle, wrong env), not the code.
+- **Keep the `react-pixel-overlay` reference synced to the current design node.** When the design
+  updates, re-export the overlay image from the *new* node at target resolution — a "doesn't
+  match the overlay" report can just be a stale overlay image.
 
 ## Setup note
 
