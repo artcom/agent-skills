@@ -1,6 +1,6 @@
 ---
 name: prototyping
-description: Guide non-technical ART+COM users from an idea to a shareable internal web prototype. Use when a user wants to create or extend a prototype, choose its target display and input, check or install web-development tools, create a GitLab project under gitlab.artcom.de/prototypes, connect a Netlify site, choose between Astro, React, React Three Fiber, or optionally add MQTT.
+description: Guide non-technical ART+COM users from an idea to a shareable internal web prototype. Use when a user wants to create or extend a prototype, choose its target display and input, check or install web-development tools, create a GitLab project under gitlab.artcom.de/prototypes, connect a Netlify site, keep a deployed prototype private with a password and out of search engines, choose between Astro, React, React Three Fiber, or optionally add MQTT.
 ---
 
 # ART+COM Prototyping
@@ -49,6 +49,7 @@ Ask one question at a time, in this order:
 7. If not 3D: “Is it mainly a content website with pages, text, images, and simple animations?”
 8. “Does it need to show or control live data from an MQTT broker?” Explain that “I’m not sure” is a valid answer; treat it as no MQTT for now.
 9. For a new prototype, ask for a simple prototype name. Derive a lowercase, hyphenated `prototype-name` for its local folder. Use `<project-slug>-<prototype-name>` as its `repository-name`.
+10. “Is this prototype covered by a strict client NDA, so it needs its own password instead of the shared ART+COM preview password?” Say that either way nobody reaches it without a password; the only difference is which one. Treat “I’m not sure” as no.
 
 For a new prototype, use `~/Documents/prototypes/<prototype-name>` unless the user already supplied a destination. Create the `prototypes` folder if needed. If that prototype folder already exists, do not overwrite it; ask the user whether to use that folder or a different name.
 
@@ -86,6 +87,8 @@ Immediately after scaffolding a new project, create `AGENTS.md` with these proje
 # ART+COM internal prototype
 
 This is an ART+COM internal prototype. Do not add accessibility features or responsive layouts. Build only for the agreed orientation and touch-input mode.
+
+This prototype is private. It is password protected on Netlify and its pages carry `noindex` headers. Never remove the password, the `X-Robots-Tag` headers, or `robots.txt`.
 
 Commit changes regularly while working. After each commit, update the Netlify deployment by running `netlify deploy --prod --build` once the site is connected to Netlify.
 
@@ -154,12 +157,74 @@ netlify sites:create --name <repository-name> --account-slug <artcom-team-slug>
 
 Use the same `<project-slug>-<prototype-name>` value as the GitLab repository. A Netlify site name is a globally unique public subdomain, so an unprefixed name like `kiosk` both collides with other Netlify customers and makes the prototype easy to guess.
 
-This creates and links an empty project to the current folder. If a site of that name already exists, link it only when it belongs to the intended ART+COM team; otherwise create `<repository-name>-<yyyymmdd>`. Keep `.netlify/state.json` local only. Run the local build first, then deploy with `netlify deploy --prod --build`. Do not configure GitLab continuous deployment in this initial flow.
+This creates and links an empty project to the current folder. If a site of that name already exists, link it only when it belongs to the intended ART+COM team; otherwise create `<repository-name>-<yyyymmdd>`. Keep `.netlify/state.json` local only. Do not configure GitLab continuous deployment in this initial flow.
+
+Make the site private as described in section 7 **before** the first production deploy. Then run the local build and deploy with `netlify deploy --prod --build`.
 
 After linking, run `netlify env:list --json` and check only whether `PUBLIC_BROKER` and `INTERNAL_BROKER` exist with appropriate scopes and deploy contexts; never show their values. `INTERNAL_BROKER` needs the Functions scope when it is used by a Netlify Function.
 
 Netlify CLI can create site variables, but ART+COM broker variables must remain shared team variables. If either name is missing, do not create a site-specific replacement. If the authenticated account has Team Owner access, create the missing shared variable through the Netlify API; otherwise, state which name is missing and that a Netlify Team Owner must add it in Team settings → Environment variables. Re-check once configured.
 
-## 7. Finish in plain language
+## 7. Keep every prototype private
 
-Summarize the prototype folder, chosen approach and reason, GitLab URL, Netlify URL, build/deploy result, and whether live MQTT was added. State any blocked step in ordinary language and give the one action the user needs to take next.
+A Netlify site is public and searchable the moment it is deployed. Every ART+COM prototype must be password protected before its first production deploy. Do not ask the user whether they want this; it is the standard setup.
+
+ART+COM uses one shared preview password for all prototypes. Netlify's team-wide default Password Protection is an Enterprise feature, so on the ART+COM Pro plan every site must be set individually. Do not look for a team setting that applies it automatically; there is none.
+
+Which password depends on the NDA answer from the brief.
+
+For a normal prototype, the shared password is stored as the team environment variable `ARTCOM_PREVIEW_PASSWORD`, so do not ask the user for it. Read the ART+COM `account_id` once from `netlify api listAccountsForUser`, then fetch and apply the password in a way that keeps it out of the chat:
+
+```bash
+PREVIEW_PW=$(netlify api getEnvVar --data "{\"account_id\":\"<account-id>\",\"key\":\"ARTCOM_PREVIEW_PASSWORD\"}" \
+  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const o=JSON.parse(s);const v=(o.values||[]).find(x=>x.context==="all")||(o.values||[])[0];process.stdout.write(v&&v.value?v.value:"")})')
+
+netlify api updateSite --data "$(PW="$PREVIEW_PW" SID="<site-id>" node -e 'process.stdout.write(JSON.stringify({site_id:process.env.SID,body:{password:process.env.PW}}))')" > /dev/null
+```
+
+The value stays in a shell variable and is never printed. If `PREVIEW_PW` comes back empty the variable is missing: ask the user for the shared password, pass it to the same `updateSite` call, and offer to store it for next time so nobody is asked again:
+
+```bash
+netlify api createEnvVars --data "$(PW="<shared-password>" node -e 'process.stdout.write(JSON.stringify({account_id:"<account-id>",body:[{key:"ARTCOM_PREVIEW_PASSWORD",scopes:["functions"],values:[{context:"all",value:process.env.PW}]}]}))')"
+```
+
+Keep that variable non-secret, because a Netlify secret variable cannot be read back. The `functions` scope keeps it out of every build environment while leaving it readable through the API.
+
+Never write the shared password into this skill, a prototype repository, or any other file: this skill is published in a public repository.
+
+For a prototype under a strict client NDA, do not use the shared password. Offer to generate one instead:
+
+```bash
+node -e 'console.log(require("crypto").randomBytes(9).toString("base64url"))'
+```
+
+Report that generated password once in the chat and tell the user to store it in their password manager, because Netlify will never show it again. Accept a password of the user's own choosing just as readily.
+
+Either way, set it on the new site:
+
+```bash
+netlify api updateSite --data '{"site_id":"<site-id>","body":{"password":"<password>"}}'
+```
+
+Never echo the shared password back, write any password to a file, commit one, or include one in later output. Netlify does not return it either, so confirm the result with:
+
+```bash
+netlify api getSite --data '{"site_id":"<site-id>"}' \
+  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).has_password))'
+```
+
+This is the only check available and it is safe to run. Deploy only once it prints `true`. If the user does not know the password, stop before deploying and say plainly that the prototype would otherwise be readable by anyone on the internet.
+
+This protects the production URL and every deploy URL together. Visitors get a neutral password page and stay signed in for that browser session.
+
+Never remove a password on your own. If the user explicitly asks for a link that needs no password, tell them plainly that the prototype then becomes visible to anyone who has the URL, and only then run:
+
+```bash
+netlify api updateSite --data '{"site_id":"<site-id>","body":{"password":""}}'
+```
+
+For a prototype that runs unattended on a display in the office, offer firewall traffic rules instead: a Team Owner allows the office IP range under Project configuration → Access & security → Firewall traffic rules, so nobody has to type a password after a reboot.
+
+## 8. Finish in plain language
+
+Summarize the prototype folder, chosen approach and reason, GitLab URL, Netlify URL, build/deploy result, and whether live MQTT was added. State that the prototype is password protected and say which password opens it: the shared ART+COM preview password, or this prototype's own password for an NDA prototype. Never print the shared password. State any blocked step in ordinary language and give the one action the user needs to take next.
