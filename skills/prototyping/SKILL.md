@@ -100,7 +100,23 @@ Create a minimal working first screen that reflects the user’s description and
 
 Create `.env.example` with names and safe placeholders only. Ensure real `.env*` files are ignored by Git. Never put real broker URLs, credentials, or Netlify secrets in source code, `netlify.toml`, commits, or output.
 
-Create a `netlify.toml` with the actual build command and `dist` as the publish directory for Astro and Vite. Run `npm run build`; a successful build is sufficient verification.
+Create a `netlify.toml` with the actual build command, `dist` as the publish directory for Astro and Vite, and headers that keep the prototype out of search results:
+
+```toml
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+```
+
+Netlify adds this header to deploy previews on its own, but never to the production URL the user will share, so set it explicitly. Also create `public/robots.txt` with:
+
+```text
+User-agent: *
+Disallow: /
+```
+
+Run `npm run build`; a successful build is sufficient verification.
 
 ## 4. Add live MQTT data only when wanted
 
