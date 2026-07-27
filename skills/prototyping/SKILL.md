@@ -149,10 +149,12 @@ For an existing project, retain its current remote unless the user explicitly as
 From the project root, state that the prototype is being connected to Netlify. Do not use `netlify init`: it configures continuous deployment and introduces interactive Git-provider setup. List accessible Netlify teams, select the one clearly named ART+COM, and create a directly deployable site with:
 
 ```bash
-netlify sites:create --name <prototype-name> --account-slug <artcom-team-slug>
+netlify sites:create --name <repository-name> --account-slug <artcom-team-slug>
 ```
 
-This creates and links an empty project to the current folder. If a site of that name already exists, link it only when it belongs to the intended ART+COM team; otherwise create `<prototype-name>-<yyyymmdd>`. Keep `.netlify/state.json` local only. Run the local build first, then deploy with `netlify deploy --prod --build`. Do not configure GitLab continuous deployment in this initial flow.
+Use the same `<project-slug>-<prototype-name>` value as the GitLab repository. A Netlify site name is a globally unique public subdomain, so an unprefixed name like `kiosk` both collides with other Netlify customers and makes the prototype easy to guess.
+
+This creates and links an empty project to the current folder. If a site of that name already exists, link it only when it belongs to the intended ART+COM team; otherwise create `<repository-name>-<yyyymmdd>`. Keep `.netlify/state.json` local only. Run the local build first, then deploy with `netlify deploy --prod --build`. Do not configure GitLab continuous deployment in this initial flow.
 
 After linking, run `netlify env:list --json` and check only whether `PUBLIC_BROKER` and `INTERNAL_BROKER` exist with appropriate scopes and deploy contexts; never show their values. `INTERNAL_BROKER` needs the Functions scope when it is used by a Netlify Function.
 
