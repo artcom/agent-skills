@@ -161,7 +161,14 @@ This creates and links an empty project to the current folder. If a site of that
 
 Make the site private as described in section 7 **before** the first production deploy. Then run the local build and deploy with `netlify deploy --prod --build`.
 
-After linking, run `netlify env:list --json` and check only whether `PUBLIC_BROKER` and `INTERNAL_BROKER` exist with appropriate scopes and deploy contexts; never show their values. `INTERNAL_BROKER` needs the Functions scope when it is used by a Netlify Function.
+After linking, check whether `PUBLIC_BROKER` and `INTERNAL_BROKER` exist as shared team variables with appropriate scopes and deploy contexts. Do not use `netlify env:list`: it prints values, including the shared preview password. List names and scopes only:
+
+```bash
+netlify api getEnvVars --data '{"account_id":"<account-id>"}' \
+  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{for(const v of JSON.parse(s)) console.log(v.key, "|", (v.scopes||[]).join(","), "|", (v.values||[]).map(x=>x.context).join(","))})'
+```
+
+`INTERNAL_BROKER` needs the Functions scope when it is used by a Netlify Function.
 
 Netlify CLI can create site variables, but ART+COM broker variables must remain shared team variables. If either name is missing, do not create a site-specific replacement. If the authenticated account has Team Owner access, create the missing shared variable through the Netlify API; otherwise, state which name is missing and that a Netlify Team Owner must add it in Team settings → Environment variables. Re-check once configured.
 
