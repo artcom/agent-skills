@@ -28,6 +28,14 @@ If anything is missing or outdated, briefly say which tools will be installed or
 
 If GitLab login is missing, ask the user for a personal access token: tell them to open `https://gitlab.artcom.de/-/user_settings/personal_access_tokens`, create a token with the `api` scope, and paste it into the chat. Then log in by piping the token to `glab auth login --hostname gitlab.artcom.de --stdin`. Never echo the token back, store it in a file, or include it in any output. If Netlify login is missing, tell the user a browser window will open and run `netlify login`. Re-run the preflight until every required item is ready.
 
+Then confirm the Netlify login is the company account, not a personal one:
+
+```bash
+netlify status
+```
+
+The listed team must be `ART+COM`. If it is a personal team, tell the user in plain language that they are signed in with a private Netlify account, then run `netlify logout` and `netlify login` again so they can pick their ART+COM account. Do not continue with a personal account: it cannot password-protect a prototype and has none of the shared broker variables.
+
 ## 2. Gather a short prototype brief
 
 Ask one question at a time, in this order:
