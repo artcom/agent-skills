@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.4.0
+  version: 1.7.1
   author: ART+COM
 ---
 
@@ -30,6 +30,13 @@ user owns/co-owns the file). Each source-fixable §7 bullet below is tagged **[p
 back here. The remaining §7 items are inherent to codegen or delivery — handle those during and after
 implementation as usual. If preflight isn't run (out of remit, non-interactive), continue with §7 as
 the downstream fallback and note it in the summary.
+
+When a design node is **updated** and you re-implement against it, re-check the preflight findings you
+previously compensated for. Designers fix these: a scaled component instance gets rebuilt at its
+native size, an unbound literal gets bound, a substituted font gets replaced. Every workaround you
+left in code for a source problem becomes a *new* defect the moment the source is fixed, so treat
+"which of my compensations are now unnecessary?" as part of re-implementing, and delete the ones the
+file no longer needs.
 
 ## 1. Learn the project before touching Figma
 
@@ -125,6 +132,13 @@ without it, and mention the gap in the final summary.
    structured node representation (`get_design_context`; some connectors name it `get_code`).
 2. If the response is truncated or too large, call **`get_metadata`** for the node map, then
    re-fetch only the needed child node(s) with `get_design_context`.
+   - **A child fetch does not describe its container.** `get_design_context` returns the styling of
+     the node you asked for; the fill, padding, gap and radius of every frame *above* it are simply
+     absent. Fetching sub-frames to save context therefore turns each wrapper into a guess — and the
+     wrapper is usually what carries the surface colour. If you drill into children, fetch the
+     container node too (or the whole card once, with `forceCode` if it is only borderline large).
+     `get_metadata` gives you a child's x/y/size, which makes a wrapper's *padding* look inferable;
+     it tells you nothing about its **fill**, so never conclude a container is white from geometry.
 3. Call **`get_screenshot`** (aka `get_image`) for a visual reference of the exact variant.
 4. Pull Figma variables with **`get_variable_defs`** if available, and map them to the project's
    existing design tokens (see Tokens below).
@@ -166,6 +180,13 @@ without it, and mention the gap in the final summary.
   file-organization convention (co-located styles, index files, folder-per-component, etc.) — mirror
   an existing component's layout exactly.
 - If a component needs a new variant, **extend the existing component**, don't clone it.
+- **Reusing a component for a second screen: reuse the code, re-derive the data.** When a new frame
+  is "the same layout with different content", the temptation is to copy the sibling screen's content
+  entry and edit the visible strings. That silently carries over every **state-bearing** value the
+  strings don't show — which step of a progress timeline is `current`, which list rows are warning vs
+  success, which item is emphasised, which tag tone applies. Read those from the new node's
+  `get_design_context` like any other property. A copied timeline whose "in progress" marker sits one
+  step off looks plausible in isolation and is only obvious next to the export.
 - Import and apply styles the way the rest of the project does (e.g. `styles.foo` for CSS Modules,
   `className="..."` for Tailwind, a styled-component call, etc.).
 
@@ -184,6 +205,32 @@ without it, and mention the gap in the final summary.
   font; text metrics (wrapping, clipping, ellipsis) usually diverge because of a CSS property, not the
   typeface. If the font is only OS-installed and the app must render identically elsewhere, note that
   bundling it via `@font-face` is a separate portability task.
+
+### Motion the design does not specify
+
+Figma files usually carry end states only, so transitions are an addition you make rather than a value
+you port. They are also where jank shows up, and the risk scales with the animated area: a full-screen
+layer on a large canvas can cost far more per frame than a small component on a phone-sized one.
+
+- **Get one profile before theorising.** A "the animation is rough" report has four candidate
+  phases - scripting, layout, paint, compositing - and they need opposite fixes. Ask for (or take)
+  DevTools **Rendering → Paint flashing** plus one **Performance** recording of the interaction.
+  Nothing flashing plus a long task under `Event: click` means the incoming view is being *built*
+  in the handler; green flashing at the end of the fade means paint or decode; long frames in
+  Rasterize/GPU with no scripting means compositing. Iterating on plausible causes without this
+  costs rounds and fixes things that were never broken.
+- **Do not construct the incoming view inside the interaction.** Building a view of any size can
+  exceed a frame's budget, and a whole screen reliably does, so the animation starts with frames
+  already spent and the content lands in one lump. For a switch between two known states (tabs, a two-way toggle) keep **both mounted** and
+  animate only a class - no build, no layout, no decode in the path. Where mounting is unavoidable,
+  mount invisibly, wait until it has painted (and its images are `decode()`d, not merely
+  `complete`), and only then start the animation.
+- **Disturb nothing else while animating.** The transition's own state changes must not re-run the
+  parent's render function per layer (memoise each layer on its key, or you get a second long task);
+  a settled layer must not be moved to another container or lose its promotion, since a remount or a
+  compositor demotion both read as content flicking into place as the fade ends; and the outgoing
+  layer should stay opaque underneath rather than fade out, or the page shows through two
+  half-transparent layers and the whole thing dips in brightness.
 
 ### Strokes / borders (do not translate a Figma Stroke to a CSS `border`)
 
@@ -245,6 +292,22 @@ drops off the baseline shared by the others.
 - After the first implementation, re-fetch `get_screenshot` and compare against the rendered code.
 - Fix any layout drift, spacing mismatch, wrong color, or extra border **before** finishing. If the
   screenshot has a clean background but your CSS added a border, remove it.
+- **Two instances of one Figma component can differ — put the difference in data, not in the shared
+  component.** Designers override colour, padding, or a field per instance, so "the same card" on a
+  second screen may set its title in `text/primary` where the first uses `text/secondary`, or add a
+  16px inset the first doesn't have. Diff the **new instance's** design context against what your
+  component already does. When they disagree, resist "fixing" the shared component globally: that
+  silently breaks the screen you already verified. Drive the difference from the same data layer the
+  content comes from, defaulting to the behaviour already verified. If a single component accumulates
+  several such flags, say so in the summary — it is usually design drift the designer should confirm,
+  not intent.
+- **Changing a shared component is a multi-screen change — re-measure every screen that renders it,
+  and treat a worse number as evidence.** A single screen's diff can improve while a sibling's
+  degrades; averaging or checking only the screen you're working on hides it. If a metric moves the
+  wrong way after a change you believe is correct, the design almost certainly differs per instance
+  (previous bullet) — go sample both exports at that element before overriding the measurement with
+  your reasoning. The screen that **doesn't** move is equally informative: it localizes the cause to
+  the components the moved screens don't share with it.
 - **When alignment drifts in a repeated list/table, measure pitch vs. offset before guessing.** A
   *constant* offset across all items means a one-time height mismatch in an element **above** the list
   (see "A frame's height is not its text's line-height"); a *growing* offset means a per-item pitch
@@ -300,6 +363,14 @@ get handled.
   weight of the brand font** and substituted a system font for just those layers. This is a
   decision, not an auto-fix: surface it — keep the brand font (correct for production) or bundle
   the fallback to match the mockup 1:1. Don't silently ship a non-brand font or silently "correct" it.
+- **Don't inherit type from your own earlier implementation.** Once a shared component exists, the next
+  screen's version of it gets rendered by code whose `font-weight` was read from a *different* node. A
+  design routinely sets one heading in Bold while its siblings are Medium — re-read the font style the
+  codegen reports (`<Family>:Bold` vs `<Family>:Medium`) for the node in front of you rather than
+  trusting what the component already does. Weight errors are nearly invisible by eye and barely move an aggregate
+  diff; **ink coverage** settles it objectively — crop the heading in render and export, count pixels
+  darker than mid-grey, and compare. Equal ink in two different exports also proves the weight is not
+  a per-instance override, so the fix belongs in the shared component.
 - **Fix the font before the size.** Different families size differently per px, so matching a
   size by eye with the wrong family gives a compensating value that's wrong once the right font
   loads. Set `font-family` first, then apply the design's real `font-size`.
@@ -349,10 +420,44 @@ get handled.
   bug to chase; boxes offset → real layout error). The canvas `getImageData` per-mark pass
   (center/height/color arrays) is **token-expensive — reserve it for one hero/repeated element the
   user flags**, never as a routine sweep. (See §6 for the constant-vs-growing offset diagnostic.)
+  Measuring locates an unexplained difference and confirms a fix — it is not how you learn the spec,
+  which `get_design_context` states outright. So: localize once, read the spec, fix, re-measure
+  **once** across the affected screens, and report only the numbers that changed a decision.
+- **Split the diff by magnitude — a wrong container fill hides from a severity-only check.** If you
+  reduce a comparison to one number, count differing pixels at *two* thresholds (e.g. >8/255 and
+  >32/255). A wrong surface colour is a low-delta error over a huge area: neighbouring greys differ
+  by ~10-20, so it barely moves the >32 count while dominating the >8 count. A screen can therefore
+  look "at parity" on a single severity metric while a whole panel is visibly the wrong colour. A
+  big >8 count with a flat >32 count means **large-area fill**, not text antialiasing; a small >8
+  with a proportional >32 means edges and glyphs, which is normal.
+- **Validate the comparison before trusting its verdict.** A bad number is a claim about *either* the
+  code or the harness. If the diff is elevated almost everywhere — including regions that are plain
+  background in both images — the baseline is misaligned, not the layout: suspect the export crop
+  first. Two traps: a full-frame export carries **bleed around the frame that need not be symmetric**,
+  so the content origin is not simply (bleed, bleed) — measure a known landmark instead of assuming it;
+  and crop tools each order their arguments differently (height/width, top/left, x/y), so a swapped
+  pair shifts the baseline a few px in both axes and manufactures a large, diffuse diff. Also confirm
+  you fetched the **full-resolution** export rather than a downscaled preview — endpoints often serve
+  one while reporting the original dimensions in their metadata. Sanity-check by sampling one pixel of
+  known background in both images before diagnosing anything.
+- **A whole-screen metric cannot see a single element being wrong — measure the element's own edge.**
+  One text line shifted, or one weight too light, touches a tiny fraction of the frame, so it moves a
+  whole-screen mean by less than the run-to-run noise: "the numbers are fine" is not evidence that a
+  flagged element is right, and the larger the canvas the more true that gets. Measure the thing
+  directly: scan the element's band in both images for the **first column (or row) containing ink** and
+  compare the coordinates. That yields an exact pixel offset and, unlike a mean, points at a cause — a
+  delta on one text row whose siblings align is a missing padding/inset on that row, not a font issue.
 - **Beyond §3's per-node fetch, don't reconstruct a rich sub-component from the overview
   screenshot.** A media card / carousel / chart has assets and styles you'll fake otherwise — a
   6-thumbnail strip is six *different* images, and image crops are explicit (Figma gives
   size/offset like `h-[152.58%] top-[-6.21%]` → replicate via `object-position`, not center `cover`).
+- **When you swap a baked image asset, re-derive its placement — don't inherit the old CSS.** The
+  positioning that made the previous asset correct encodes what that particular export *contained*.
+  Exporting the **source node** and exporting the **container that clips it** produce different
+  images: the container export already has the crop and offset baked in and fills its frame 1:1, while
+  a source export still needs the design's `width`/`height`/offset (and `object-fit: fill`) to
+  reproduce the same crop. Feeding a container export into source-geometry CSS re-scales it — discs
+  become ovals — and the diff gets *worse* than before the swap, which is the tell.
 - **Cache-bust when overwriting a hosted asset at the same URL.** In-place replacement keeps
   serving stale bytes to cached clients — server updated, app shows old. Version the filename or
   add `?v=N` and update the reference. Confirm the server serves new bytes AND the app fetches
