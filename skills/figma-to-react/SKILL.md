@@ -411,6 +411,23 @@ get handled.
 
 ### Verify & deliver
 
+**How to actually measure.** The techniques below use three different mechanisms, and only the first
+one spends image tokens:
+
+- **Difference-blend overlay** — composite your render and the design export into one image, then
+  *look* at it. This is the only step where an image goes to the model.
+- **Box geometry** (`getBoundingClientRect`) — browser JS evaluated against the **running app** (e.g.
+  Playwright/CDP `page.evaluate`), returning a handful of numbers as text. Needs the app running.
+- **Pixel statistics** (ink coverage, two-threshold diff counts, first-column-with-ink, the
+  `getImageData` per-mark pass) — a **short throwaway script you write** that reads the two PNGs and
+  prints numbers: Node with `sharp`/`pngjs`, Python with PIL, or `magick` on the command line. Use
+  whatever the project or environment already has; don't add a dependency to measure. The model never
+  sees the pixels, only the printed result — which is why these are cheap *except* the per-mark pass,
+  whose per-element arrays are what makes it token-expensive.
+
+Print one number (or one coordinate) per question you're answering. A script that dumps a full array
+when you needed a single offset is the expensive mistake, not the measuring itself.
+
 - **Scale verification effort to the element — don't measure everything.** Default fidelity is
   cheap and applies to every element: read exact specs (the sections above) and eyeball **one**
   `difference`-blend overlay of your render on the design export (matching pixels go black).

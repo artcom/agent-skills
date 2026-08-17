@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.5.1
+
+- Clarify **how** §7's verification steps are actually executed — the section described what to
+  measure but never named a mechanism. Adds a short "How to actually measure" note to
+  "Verify & deliver" separating the three: the difference-blend overlay (the only step that sends an
+  image to the model), box geometry via browser JS against the running app, and pixel statistics via
+  a throwaway script over the two PNGs (`sharp`/`pngjs`, PIL, or `magick` — whatever is already
+  available, no new dependency). Also makes explicit that the model sees printed numbers rather than
+  pixels, which is what makes these cheap apart from the per-mark array pass.
+
+## 1.5.0
+
+Additive guidance only — nothing about the required workflow changed. All of it comes from cases
+where a screen was reported as "done" but still didn't match, and the reason was a habit rather than
+a missing rule.
+
+- **Re-implementing against an updated design node** (section 0): when the designer fixes a source
+  problem you previously worked around in code, that workaround becomes a new defect. Re-check and
+  delete the compensations the file no longer needs.
+- **A child fetch does not describe its container** (section 3): drilling into sub-frames to save
+  context leaves every wrapper above them a guess — and the wrapper usually carries the surface
+  colour. `get_metadata` gives geometry, never fill, so a container is never "white by inference".
+- **Reusing a component for a second screen: reuse the code, re-derive the data** (section 4):
+  copying a sibling screen's content entry and editing the visible strings silently carries over
+  state-bearing values (which timeline step is current, which rows are warnings, which tag tone).
+- **New "Motion the design does not specify" subsection** (section 4): Figma carries end states
+  only, so transitions are an addition you author. Profile before theorising, don't build the
+  incoming view inside the interaction, and don't disturb other layers while animating.
+- **Per-instance differences belong in data, not in the shared component** (section 6): and changing
+  a shared component is a multi-screen change — re-measure every screen that renders it, and treat a
+  metric that moved the wrong way as evidence rather than noise.
+- **Don't inherit type from your own earlier implementation** (section 7): re-read the font style
+  per node; ink coverage settles weight objectively where the eye and aggregate diffs can't.
+- **Measurement discipline** (section 7): split a pixel diff across two thresholds so a wrong
+  large-area fill can't hide behind a severity-only metric; validate the comparison harness (export
+  bleed, crop-argument order, downscaled previews) before trusting a bad number; measure an
+  element's own edge, since a whole-screen metric cannot see one element being wrong.
+- **Re-derive placement when swapping a baked image asset** (section 7): a container export has the
+  crop baked in, a source export doesn't — feeding one into the other's CSS re-scales it.
+
 ## 1.4.0
 
 Section 7 is a checklist of ~20 small reasons a finished screen still looks slightly off from
