@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.7.1
+  version: 1.5.1
   author: ART+COM
 ---
 
