@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.8.0
+
+Sections 6 and 7 had both become verification sections that cross-referenced each other, with the
+split between them arbitrary: per-instance differences in §6, magnitude diffs in §7, the overlay in
+both. A reader could not tell which one to follow. §6 is now the flow and §7 the substance — no
+guidance was dropped, three bullets moved to where they belong.
+
+- **§6 is now a numbered sequence** of seven steps (re-fetch screenshot → fix → work through §7 →
+  run the app → overlay → figma-sync → lint), with §7 as an explicit step rather than an implied one.
+  Adds the warning that a by-eye screenshot comparison catches boxes and colours and reliably misses
+  the per-element errors §7 exists for — previously the numbered flow's biggest silent assumption.
+- **Moved "Two instances of one Figma component can differ" to §4 Components**, next to "reuse the
+  code, re-derive the data". It is an implementation rule about where a difference belongs (in the
+  data layer, not the shared component), not a measurement technique — it was only in §6 because
+  that is where you notice it.
+- **Moved the pitch-vs-offset diagnostic and "changing a shared component is a multi-screen change"
+  to §7 "Verify & deliver"**, joining the other measurement guidance. Both are about how to read a
+  number, so they now sit with the section that explains how to produce one.
+- Repointed the cross-references the moves invalidated: §7 no longer sends the reader to §6 for the
+  constant-vs-growing diagnostic it now contains itself, and the two moved bullets name their §4
+  counterparts explicitly instead of saying "previous bullet".
+
 ## 1.7.0
 
 - Move the "Motion the design does not specify" section out into the new

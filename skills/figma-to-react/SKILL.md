@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.7.0
+  version: 1.8.0
   author: ART+COM
 ---
 
@@ -187,6 +187,15 @@ without it, and mention the gap in the final summary.
   success, which item is emphasised, which tag tone applies. Read those from the new node's
   `get_design_context` like any other property. A copied timeline whose "in progress" marker sits one
   step off looks plausible in isolation and is only obvious next to the export.
+- **Two instances of one Figma component can differ — put the difference in data, not in the shared
+  component.** Designers override colour, padding, or a field per instance, so "the same card" on a
+  second screen may set its title in `text/primary` where the first uses `text/secondary`, or add a
+  16px inset the first doesn't have. Diff the **new instance's** design context against what your
+  component already does. When they disagree, resist "fixing" the shared component globally: that
+  silently breaks the screen you already verified. Drive the difference from the same data layer the
+  content comes from, defaulting to the behaviour already verified. If a single component accumulates
+  several such flags, say so in the summary — it is usually design drift the designer should confirm,
+  not intent.
 - Import and apply styles the way the rest of the project does (e.g. `styles.foo` for CSS Modules,
   `className="..."` for Tailwind, a styled-component call, etc.).
 
@@ -290,37 +299,23 @@ drops off the baseline shared by the others.
 
 ## 6. Verification
 
-- After the first implementation, re-fetch `get_screenshot` and compare against the rendered code.
-- Fix any layout drift, spacing mismatch, wrong color, or extra border **before** finishing. If the
-  screenshot has a clean background but your CSS added a border, remove it.
-- **Two instances of one Figma component can differ — put the difference in data, not in the shared
-  component.** Designers override colour, padding, or a field per instance, so "the same card" on a
-  second screen may set its title in `text/primary` where the first uses `text/secondary`, or add a
-  16px inset the first doesn't have. Diff the **new instance's** design context against what your
-  component already does. When they disagree, resist "fixing" the shared component globally: that
-  silently breaks the screen you already verified. Drive the difference from the same data layer the
-  content comes from, defaulting to the behaviour already verified. If a single component accumulates
-  several such flags, say so in the summary — it is usually design drift the designer should confirm,
-  not intent.
-- **Changing a shared component is a multi-screen change — re-measure every screen that renders it,
-  and treat a worse number as evidence.** A single screen's diff can improve while a sibling's
-  degrades; averaging or checking only the screen you're working on hides it. If a metric moves the
-  wrong way after a change you believe is correct, the design almost certainly differs per instance
-  (previous bullet) — go sample both exports at that element before overriding the measurement with
-  your reasoning. The screen that **doesn't** move is equally informative: it localizes the cause to
-  the components the moved screens don't share with it.
-- **When alignment drifts in a repeated list/table, measure pitch vs. offset before guessing.** A
-  *constant* offset across all items means a one-time height mismatch in an element **above** the list
-  (see "A frame's height is not its text's line-height"); a *growing* offset means a per-item pitch
-  error (wrong row height or an unexpected gap). Measuring the position of repeating landmarks (e.g.
-  alternating row backgrounds) in the render vs. the design export tells the two apart objectively and
-  points straight at the cause.
-- Run the app with its own dev command from `package.json` (a `/run` skill, if installed, can launch
-  it for you) to visually confirm.
-- If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
-  exported design image.
-- If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
-- Lint using the project's own lint command before finishing.
+This section is the **flow**; §7 is its companion and holds the substance — what the recurring
+mismatches are, and how to measure one you can't explain by eye. Run these in order:
+
+1. Re-fetch `get_screenshot` and compare it against the rendered code.
+2. Fix any layout drift, spacing mismatch, wrong colour, or extra border **before** finishing. If the
+   screenshot has a clean background but your CSS added a border, remove it.
+3. Work through §7 for the screen you just built — by area (tokens & colour, type, icons, layout),
+   then "Verify & deliver" for anything still unexplained.
+4. Run the app with its own dev command from `package.json` (a `/run` skill, if installed, can launch
+   it for you) to confirm visually.
+5. If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
+   exported design image.
+6. If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
+7. Lint using the project's own lint command before finishing.
+
+Don't treat step 1 as the whole of verification: a screenshot comparison by eye catches boxes and
+colours, and reliably misses the per-element errors §7 exists for.
 
 ## 7. Pixel-fidelity checklist (why a "done" screen still reads as "slightly off")
 
@@ -437,10 +432,10 @@ when you needed a single offset is the expensive mistake, not the measuring itse
   coords (boxes match but text still ghosts → inherent Figma-vs-browser glyph-baseline diff, not a
   bug to chase; boxes offset → real layout error). The canvas `getImageData` per-mark pass
   (center/height/color arrays) is **token-expensive — reserve it for one hero/repeated element the
-  user flags**, never as a routine sweep. (See §6 for the constant-vs-growing offset diagnostic.)
-  Measuring locates an unexplained difference and confirms a fix — it is not how you learn the spec,
-  which `get_design_context` states outright. So: localize once, read the spec, fix, re-measure
-  **once** across the affected screens, and report only the numbers that changed a decision.
+  user flags**, never as a routine sweep. Measuring locates an unexplained difference and confirms a
+  fix — it is not how you learn the spec, which `get_design_context` states outright. So: localize
+  once, read the spec, fix, re-measure **once** across the affected screens, and report only the
+  numbers that changed a decision.
 - **Split the diff by magnitude — a wrong container fill hides from a severity-only check.** If you
   reduce a comparison to one number, count differing pixels at *two* thresholds (e.g. >8/255 and
   >32/255). A wrong surface colour is a low-delta error over a huge area: neighbouring greys differ
@@ -465,6 +460,19 @@ when you needed a single offset is the expensive mistake, not the measuring itse
   directly: scan the element's band in both images for the **first column (or row) containing ink** and
   compare the coordinates. That yields an exact pixel offset and, unlike a mean, points at a cause — a
   delta on one text row whose siblings align is a missing padding/inset on that row, not a font issue.
+- **When alignment drifts in a repeated list/table, measure pitch vs. offset before guessing.** A
+  *constant* offset across all items means a one-time height mismatch in an element **above** the list
+  (see "A frame's height is not its text's line-height" in §4); a *growing* offset means a per-item
+  pitch error (wrong row height or an unexpected gap). Measuring the position of repeating landmarks
+  (e.g. alternating row backgrounds) in the render vs. the design export tells the two apart
+  objectively and points straight at the cause.
+- **Changing a shared component is a multi-screen change — re-measure every screen that renders it,
+  and treat a worse number as evidence.** A single screen's diff can improve while a sibling's
+  degrades; averaging or checking only the screen you're working on hides it. If a metric moves the
+  wrong way after a change you believe is correct, the design almost certainly differs per instance
+  (see "Two instances of one Figma component can differ" in §4) — go sample both exports at that
+  element before overriding the measurement with your reasoning. The screen that **doesn't** move is
+  equally informative: it localizes the cause to the components the moved screens don't share with it.
 - **Beyond §3's per-node fetch, don't reconstruct a rich sub-component from the overview
   screenshot.** A media card / carousel / chart has assets and styles you'll fake otherwise — a
   6-thumbnail strip is six *different* images, and image crops are explicit (Figma gives
