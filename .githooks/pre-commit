@@ -1,0 +1,5 @@
+#!/bin/sh
+# Opt-in: enable with `git config core.hooksPath .githooks`
+# Blocks a commit that edits a SKILL.md without bumping its metadata.version,
+# or that leaves metadata.version and CHANGELOG.md disagreeing.
+exec node scripts/check-skill-versions.mjs --since HEAD

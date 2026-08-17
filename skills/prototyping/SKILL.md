@@ -1,6 +1,9 @@
 ---
 name: prototyping
 description: Guide non-technical ART+COM users from an idea to a shareable internal web prototype. Use when a user wants to create or extend a prototype, choose its target display and input, check or install web-development tools, create a GitLab project under gitlab.artcom.de/prototypes, connect a Netlify site, keep a deployed prototype private with a password and out of search engines, choose between Astro, React, React Three Fiber, or optionally add MQTT.
+metadata:
+  version: 3.0.0
+  author: ART+COM
 ---
 
 # ART+COM Prototyping

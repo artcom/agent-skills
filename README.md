@@ -87,6 +87,18 @@ For each release:
 
 3. Describe the user-visible change in the annotated tag message or the Git hosting release notes.
 
+### Checking versions
+
+`npm test` verifies that every skill's `metadata.version` matches the newest heading in its
+`CHANGELOG.md`. Add `npm run check:bumped` (which is `--since main`) to also require that a skill
+whose `SKILL.md` changed has a changed `metadata.version` — the two ways versions have drifted here
+are a bump that outran its changelog, and an edit that never bumped at all. Both run without
+dependencies and are worth wiring into a pre-commit hook:
+
+```bash
+git config core.hooksPath .githooks   # if you add one
+```
+
 `skills-lock.json` records a content hash for an installed copy. It helps detect whether a local copy matches its source, but it is not a release version. To identify a release, use the per-skill Git tag.
 
 ## Repository Structure
