@@ -205,6 +205,23 @@ without it, and mention the gap in the final summary.
   font; text metrics (wrapping, clipping, ellipsis) usually diverge because of a CSS property, not the
   typeface. If the font is only OS-installed and the app must render identically elsewhere, note that
   bundling it via `@font-face` is a separate portability task.
+- **Load the same font files the design composes text from — static faces, not a variable font.**
+  A variable font and the family's individual static faces are different files with different
+  vertical metrics. Figma picks a concrete named face per weight (Regular, Medium, Bold, …), so if
+  the app declares one variable file across a weight range instead, every text run lands on a
+  slightly different baseline than the design. The giveaway is that **the error scales with font
+  size** — small body text looks fine while headings are visibly off, all in the same direction, so
+  it reads as "the text sits too high/low" rather than as a spacing bug. Declare one `@font-face`
+  per weight (and per style) pointing at that weight's own file, and keep `font-synthesis: none` so
+  a weight you forgot to load fails visibly instead of being faked from a neighbouring one.
+
+  Do not chase this with per-element nudges before checking which font file is loaded: a
+  `margin-top` or `line-height` tweak that lines up one heading will be wrong at every other size.
+  Verify by measuring the offset at two very different font sizes — if the pixel error grows with
+  size, it is the font files, not the CSS.
+
+  Expect a **residual of up to ~1 px on large text even after this**: browsers snap the baseline to
+  a whole pixel where Figma places it on a fraction. That last pixel is not worth per-size hacks.
 
 ### Motion the design does not specify
 
