@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.5.1
+  version: 1.6.0
   author: ART+COM
 ---
 
@@ -201,13 +201,15 @@ without it, and mention the gap in the final summary.
 - Match the project's existing font-loading approach (`@font-face`, a font package, a web-font link,
   etc.) for any typeface Figma specifies. **Don't assume the design font is missing/substituted** —
   it may already be installed at the OS level (so the browser renders it directly from a family-name
-  reference with no `@font-face`) or bundled. Verify before attributing any layout difference to the
-  font; text metrics (wrapping, clipping, ellipsis) usually diverge because of a CSS property, not the
-  typeface. If the font is only OS-installed and the app must render identically elsewhere, note that
+  reference with no `@font-face`) or bundled. Verify before concluding the *family* is wrong:
+  **horizontal** metrics (wrapping, clipping, ellipsis) usually diverge because of a CSS property, not
+  the typeface. **Vertical** offsets are the opposite case — there the font files are the first thing
+  to check, not the CSS; see the next bullet. If the font is only OS-installed and the app must render
+  identically elsewhere, note that
   bundling it via `@font-face` is a separate portability task.
 - **Load the same font files the design composes text from — static faces, not a variable font.**
-  A variable font and the family's individual static faces are different files with different
-  vertical metrics. Figma picks a concrete named face per weight (Regular, Medium, Bold, …), so if
+  A variable font and the family's individual static faces are different files and can carry
+  different vertical metrics. Figma picks a concrete named face per weight (Regular, Medium, Bold, …), so if
   the app declares one variable file across a weight range instead, every text run lands on a
   slightly different baseline than the design. The giveaway is that **the error scales with font
   size** — small body text looks fine while headings are visibly off, all in the same direction, so

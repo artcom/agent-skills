@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.0
+
+- **Load the design's actual font files — static faces, not a variable font** (section 4, Tokens).
+  Figma composes text from concrete named faces per weight; declaring one variable file across a
+  weight range can land every text run on a slightly different baseline. The decisive test is that
+  the error **scales with font size** — headings visibly off while body text looks fine means the
+  font files, not the CSS, so don't chase it with per-element `margin-top`/`line-height` nudges.
+  Declare one `@font-face` per weight and style, keep `font-synthesis: none` so a missing weight
+  fails visibly instead of being faked, and accept a ~1px residual on large text from browser
+  baseline rounding.
+- Scope the neighbouring font bullet to **horizontal** metrics (wrapping, clipping, ellipsis — those
+  usually are a CSS property, not the typeface) and point vertical offsets at the rule above, so the
+  two bullets no longer read as opposite instructions.
+
 ## 1.5.1
 
 - Clarify **how** §7's verification steps are actually executed — the section described what to
