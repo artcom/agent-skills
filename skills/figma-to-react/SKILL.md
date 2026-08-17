@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.6.0
+  version: 1.7.0
   author: ART+COM
 ---
 
@@ -227,29 +227,11 @@ without it, and mention the gap in the final summary.
 
 ### Motion the design does not specify
 
-Figma files usually carry end states only, so transitions are an addition you make rather than a value
-you port. They are also where jank shows up, and the risk scales with the animated area: a full-screen
-layer on a large canvas can cost far more per frame than a small component on a phone-sized one.
-
-- **Get one profile before theorising.** A "the animation is rough" report has four candidate
-  phases - scripting, layout, paint, compositing - and they need opposite fixes. Ask for (or take)
-  DevTools **Rendering → Paint flashing** plus one **Performance** recording of the interaction.
-  Nothing flashing plus a long task under `Event: click` means the incoming view is being *built*
-  in the handler; green flashing at the end of the fade means paint or decode; long frames in
-  Rasterize/GPU with no scripting means compositing. Iterating on plausible causes without this
-  costs rounds and fixes things that were never broken.
-- **Do not construct the incoming view inside the interaction.** Building a view of any size can
-  exceed a frame's budget, and a whole screen reliably does, so the animation starts with frames
-  already spent and the content lands in one lump. For a switch between two known states (tabs, a two-way toggle) keep **both mounted** and
-  animate only a class - no build, no layout, no decode in the path. Where mounting is unavoidable,
-  mount invisibly, wait until it has painted (and its images are `decode()`d, not merely
-  `complete`), and only then start the animation.
-- **Disturb nothing else while animating.** The transition's own state changes must not re-run the
-  parent's render function per layer (memoise each layer on its key, or you get a second long task);
-  a settled layer must not be moved to another container or lose its promotion, since a remount or a
-  compositor demotion both read as content flicking into place as the fade ends; and the outgoing
-  layer should stay opaque underneath rather than fade out, or the page shows through two
-  half-transparent layers and the whole thing dips in brightness.
+Figma files usually carry end states only, so a transition between them is an addition you author
+rather than a value you port — and porting a static design specifies nothing about it. If the task
+includes transitions, or a finished screen's animation is reported as rough or stuttering, use the
+[`react-transition-performance`](../react-transition-performance/SKILL.md) skill; profile before
+changing anything. Nothing else in this skill depends on it.
 
 ### Strokes / borders (do not translate a Figma Stroke to a CSS `border`)
 

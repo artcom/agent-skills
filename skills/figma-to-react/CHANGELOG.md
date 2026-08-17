@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0
+
+- Move the "Motion the design does not specify" section out into the new
+  [`react-transition-performance`](../react-transition-performance/SKILL.md) skill. Its 25 lines were
+  browser performance debugging — paint flashing, Performance recordings, `decode()`, compositor
+  demotion, per-layer memoisation — which is neither Figma-to-code translation nor something most runs
+  touch, yet every run loaded it. Section 4 keeps a short pointer, so transitions are still handled;
+  they are just no longer paid for by runs that involve no animation.
+
 ## 1.6.0
 
 - **Load the design's actual font files — static faces, not a variable font** (section 4, Tokens).
