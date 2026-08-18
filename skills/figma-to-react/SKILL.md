@@ -112,11 +112,15 @@ without it, and mention the gap in the final summary.
 3. Call **`get_screenshot`** (aka `get_image`) for a visual reference of the exact variant.
 4. Pull Figma variables with **`get_variable_defs`** if available, and map them to the project's
    existing design tokens (see Tokens below).
-5. **Search the project's component directory for an existing component to reuse** before writing
+5. If the target spans multiple linked frames (a flow, not a single screen), pull each frame's
+   click wiring via the Figma REST API's `interactions` field before implementing — see
+   "Prototype interactions" below. Do this before writing navigation/state code, not after.
+6. **Search the project's component directory for an existing component to reuse** before writing
    anything new. Reuse is mandatory — only create a new component if nothing fits.
-6. Only after you have context + screenshot + reuse decision: download any needed assets, then
-   implement — applying whichever companion skills the user opted into (section 2).
-7. **Verify 1:1** against the screenshot (see Verification) before marking the task complete.
+7. Only after you have context + screenshot + reuse decision (+ interaction map, if step 5
+   applied): download any needed assets, then implement — applying whichever companion skills the
+   user opted into (section 2).
+8. **Verify 1:1** against the screenshot (see Verification) before marking the task complete.
 
 ## 4. Implementation rules
 
@@ -181,10 +185,43 @@ without it, and mention the gap in the final summary.
   Do not chase this with per-element nudges before checking which font file is loaded: a
   `margin-top` or `line-height` tweak that lines up one heading will be wrong at every other size.
   Verify by measuring the offset at two very different font sizes — if the pixel error grows with
-  size, it is the font files, not the CSS.
+  size, it is the font files, not the CSS. `design-diff explain` reports exactly this gradient (see
+  §Verification).
 
   Expect a **residual of up to ~1 px on large text even after this**: browsers snap the baseline to
   a whole pixel where Figma places it on a fraction. That last pixel is not worth per-size hacks.
+
+### Prototype interactions (click-through flows)
+
+The Figma MCP tools describe layout and style, not behavior. `get_metadata`'s node map is
+explicitly limited to id/type/name/position/size — a design where frames link to each other via
+"on click → navigate" cannot be read from it at all, and it is easy to conclude a flow has no
+interactivity just because that tool didn't show any.
+
+- **Detect wiring from `get_design_context` output first.** A node carrying an `ON_CLICK` →
+  `NAVIGATE` reaction renders as a clickable `<a>` (with `cursor-pointer`); a visually identical
+  sibling with no reaction renders as a plain `<div>`. When a design shows a primary/secondary
+  button pair and only one comes back as an `<a>`, that is the file telling you only one is
+  actually wired — don't wire both into equivalent handlers just because they look like a pair.
+- **Get authoritative wiring from the Figma REST API when you need to confirm it across many
+  nodes/screens** — none of the bundled MCP tools expose this field directly. Call
+  `GET https://api.figma.com/v1/files/:fileKey/nodes?ids=<nodeId>` (or `/v1/files/:fileKey` for
+  the whole file) with header `X-Figma-Token: <token>` (commonly already available as a
+  `FIGMA_TOKEN` env var). Each node in the response carries an `interactions` array —
+  `trigger.type` (e.g. `ON_CLICK`) and `actions` (e.g.
+  `{ type: "NODE", navigation: "NAVIGATE", destinationId: "<nodeId>" }`). Walk the returned tree,
+  collect every node with a non-empty `interactions`, and resolve each `destinationId` against
+  the same tree's node names to build a click → next-frame map.
+- **A frame that never appears as a `destinationId` is orphaned.** Before wiring every frame the
+  user points at into a reachable state, check whether its node id shows up as a destination
+  anywhere in the pulled interaction data. A frame with no incoming reaction isn't part of the
+  click-through flow — flag it instead of silently including it as if it were reachable.
+- **Translate the wiring, not just the pixels.** When a Figma flow becomes app state (routes, a
+  step machine, a `next`-id field in config, a click handler that advances a `useState`, etc.),
+  carry over the same live/dead-end distinction the file encodes: a button with a reaction gets a
+  real handler that advances state; a button without one must stay inert, even though it has
+  identical button styling to the one next to it. Guessing that a good-looking button "must" do
+  something produces a UI that lets users advance down a path the design never actually wired.
 
 ### Strokes / borders (do not translate a Figma Stroke to a CSS `border`)
 
@@ -243,9 +280,19 @@ drops off the baseline shared by the others.
 
 ## 6. Verification
 
+- **Measure, don't eyeball.** Comparing a screenshot by eye reliably misses a control rendered in
+  the wrong state, and cannot see a systematic baseline error at all. If `@artcom/design-diff` is
+  available, use it (`design-diff verify`, then `design-diff explain <scenario>` when that fails) —
+  see the `design-diff` skill. It reports a mean channel delta, a best-fit pixel offset per font
+  size, and the strongest differences attributed to DOM elements. Without it, at minimum diff the
+  render against the export programmatically rather than by inspection.
 - After the first implementation, re-fetch `get_screenshot` and compare against the rendered code.
 - Fix any layout drift, spacing mismatch, wrong color, or extra border **before** finishing. If the
   screenshot has a clean background but your CSS added a border, remove it.
+- **A large diff is a reason to doubt the measurement first.** A capture mistake — a design overlay
+  still composited, a dev-only panel left visible, fonts not finished loading — produces enormous,
+  confident numbers that have nothing to do with the code. Confirm the capture is sound before
+  changing any CSS.
 - **When alignment drifts in a repeated list/table, measure pitch vs. offset before guessing.** A
   *constant* offset across all items means a one-time height mismatch in an element **above** the list
   (see "A frame's height is not its text's line-height"); a *growing* offset means a per-item pitch
