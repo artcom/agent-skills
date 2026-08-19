@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.8.0
+  version: 1.9.0
   author: ART+COM
 ---
 
@@ -234,6 +234,17 @@ without it, and mention the gap in the final summary.
   Expect a **residual of up to ~1 px on large text even after this**: browsers snap the baseline to
   a whole pixel where Figma places it on a fraction. That last pixel is not worth per-size hacks.
 
+  **Correcting the font files invalidates every nudge that was compensating for them.** On an
+  existing screen this rule usually arrives *after* someone already papered over the symptom with a
+  `transform: translateY(Npx)`, a pinned `top:` on a baseline-aligned sibling, or a hand-measured
+  `line-height` — often with a comment explaining it as an inherent Figma-vs-CSS baseline
+  difference. Those compensations were tuned against the *old* metrics, so the moment you swap to
+  the right faces they stop cancelling out and start adding: the element that used to be right is
+  now off by roughly the nudge. So swapping the font files is not the end of the task — finish by
+  grepping the styles for `translateY`, absolute `top:`/`margin-top` offsets, and any
+  comment mentioning a measured or baseline correction, then delete each one and re-measure rather
+  than re-tuning it. A nudge that is still needed will re-earn itself; most will not.
+
 ### Motion the design does not specify
 
 Figma files usually carry end states only, so a transition between them is an addition you author
@@ -302,7 +313,10 @@ drops off the baseline shared by the others.
 This section is the **flow**; §7 is its companion and holds the substance — what the recurring
 mismatches are, and how to measure one you can't explain by eye. Run these in order:
 
-1. Re-fetch `get_screenshot` and compare it against the rendered code.
+1. Re-fetch `get_screenshot` and compare it against the rendered code. Before comparing against a
+   *committed* export instead (an overlay image, a sync baseline — steps 5 and 6), diff a fresh
+   export against it first: a stale reference reads as a code defect. See "Stale baselines" under
+   "Verify & deliver".
 2. Fix any layout drift, spacing mismatch, wrong colour, or extra border **before** finishing. If the
    screenshot has a clean background but your CSS added a border, remove it.
 3. Work through §7 for the screen you just built — by area (tokens & colour, type, icons, layout),
@@ -392,6 +406,15 @@ get handled.
 - **[preflight]** **Carry size constraints, not just padding/color — `min-width`/`min-height`/`max-width`.** A
   button's `min-w-[160px]` keeps a short label a full-width pill; a text block's `max-w-[Npx]`
   sets the wrap point (a body wrapping "too late" is usually a missing `max-width`, not a font bug).
+- **[preflight]** **When the codegen's values contradict the node's own geometry, the geometry wins.** §7's colour
+  rule says not to trust the *fallback* in `var(--token, fallback)`; this is the stronger case — the
+  token value itself can be wrong for the instance you are looking at. Codegen may report
+  `px-[11.429px]` for a pill whose node is 204px wide around a 184px label, which leaves 10px a
+  side, not 11.4. Sizes and positions from `get_metadata`, and distances measured off the export,
+  describe what will actually be rendered; the token names describe what the component was
+  *supposed* to inherit. Reconcile the two before coding: when they disagree, implement the measured
+  value and say so, because the mismatch is usually an override or a detached instance the designer
+  should know about.
 - **[preflight]** **Match the design's flex alignment** (`items-end` vs `center`) and let heights be
   content-driven where the design is; a header forced to `align-items: center` + fixed height
   when the design uses `items-end` shifts every title a few px.
@@ -453,6 +476,15 @@ when you needed a single offset is the expensive mistake, not the measuring itse
   you fetched the **full-resolution** export rather than a downscaled preview — endpoints often serve
   one while reporting the original dimensions in their metadata. Sanity-check by sampling one pixel of
   known background in both images before diagnosing anything.
+- **Inspect small elements at 1:1 or magnified — never from a downscaled composite.** Stacking your
+  render beside the export and shrinking it to fit is the cheapest thing to look at and the easiest
+  way to certify a defect as fine: a 2x downscale erases exactly the 1-3px insets, stroke weights and
+  pill radii that make an element read as "off". If an element is under 100px, crop it at native
+  resolution and scale **up** (nearest-neighbour) before judging it.
+- **Sample a rounded shape at its centre line, not near its corners.** Probing a pill's height in a
+  column that falls inside the corner radius reports a value several px short, and comparing two such
+  probes manufactures a difference that is not there (or hides one that is). Take the vertical extent
+  at the horizontal midpoint and the horizontal extent at the vertical midpoint.
 - **A whole-screen metric cannot see a single element being wrong — measure the element's own edge.**
   One text line shifted, or one weight too light, touches a tiny fraction of the frame, so it moves a
   whole-screen mean by less than the run-to-run noise: "the numbers are fine" is not evidence that a
@@ -491,9 +523,15 @@ when you needed a single offset is the expensive mistake, not the measuring itse
 - **"Looks wrong but your source matches" → suspect stale delivery before re-editing.** Diff the
   deployed asset against the design (byte size / pixel compare); if they match, the bug is
   delivery (cache, unmounted volume, stale dev bundle, wrong env), not the code.
-- **Keep the `react-pixel-overlay` reference synced to the current design node.** When the design
-  updates, re-export the overlay image from the *new* node at target resolution — a "doesn't
-  match the overlay" report can just be a stale overlay image.
+- **Stale baselines: re-export before you trust a number, not after it confuses you.** Committed
+  overlay/baseline exports go stale the moment a designer touches the file, and nothing in the repo
+  signals it — expect this to be common, and not always cosmetic (a component rebuilt under a *new
+  node id*, two cards swapping layout, a typo fixed in Figma but not in your content). A stale
+  reference reads as a code defect: you "fix" correct code toward an old design. So diff a fresh
+  export against the committed one first; if they differ, re-export from the *new* node at the
+  overlay's target resolution and re-run every measurement taken against the old ones. When drift
+  tracking exists (`figma-sync` or similar), `DESIGN_CHANGED` is the trigger to re-export — and a
+  clean `SYNC` only means "unchanged since the last baseline", never "code matches design".
 
 ## Setup note
 

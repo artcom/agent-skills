@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.9.0
+
+- **Correcting the font files invalidates every nudge that was compensating for them** (§4, Tokens).
+  The variable-font rule from 1.6.0 usually arrives after someone papered over the symptom with a
+  `translateY`, a pinned `top:`, or a hand-measured `line-height`; those were tuned against the old
+  metrics, so swapping to the right faces makes them add instead of cancel. Swapping the files now
+  ends with grepping out the old compensations and re-measuring.
+- **The node's own geometry beats the codegen's token values** (§7, Layout). Stronger than the
+  existing "don't trust the `var(--token, fallback)` fallback" rule: the token value itself can be
+  wrong for the instance — `px-[11.429px]` on a pill whose measured inset is 10px. Implement the
+  measured value and report the mismatch, since it is usually an override or a detached instance.
+  Tagged **[preflight]**.
+- **Two new measurement rules** (§7, Verify & deliver): inspect sub-100px elements at native
+  resolution scaled *up*, never from a downscaled side-by-side composite, which erases the 1-3px
+  insets and stroke weights that make an element read as "off"; and sample a rounded shape at its
+  centre line, since probing a pill inside its corner radius manufactures differences.
+- **Reworked the overlay-sync bullet into "Stale baselines"** (§7, Verify & deliver): committed
+  exports go stale silently and the drift is not always cosmetic, so diff a fresh export against the
+  committed one before trusting any number taken against it. `DESIGN_CHANGED` is the trigger to
+  re-export; a clean `SYNC` never means "code matches design". §6 step 1 carries the pointer.
+
 ## 1.8.0
 
 Sections 6 and 7 had both become verification sections that cross-referenced each other, with the
