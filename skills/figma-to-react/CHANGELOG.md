@@ -20,6 +20,20 @@
   exports go stale silently and the drift is not always cosmetic, so diff a fresh export against the
   committed one before trusting any number taken against it. `DESIGN_CHANGED` is the trigger to
   re-export; a clean `SYNC` never means "code matches design". §6 step 1 carries the pointer.
+- **Added a "Prototype interactions" section** (§4), merged from `main`: Figma's click-through
+  wiring is invisible to `get_metadata`, so this covers the `<a>`-vs-`<div>` tell in
+  `get_design_context` output as the quick check, the Figma REST API's per-node `interactions` field
+  (trigger + `NAVIGATE` actions resolved via `destinationId`) as the authoritative source for
+  multi-screen flows, spotting an orphaned frame that never appears as a destination, and carrying
+  the live/dead-end distinction into real vs. inert handlers. §3's required flow now pulls this map
+  before implementing when a target spans multiple linked frames.
+- **`@artcom/design-diff` is the preferred measurement tool where it exists** (§7, "How to actually
+  measure"), also from `main`: `design-diff verify` / `design-diff explain <scenario>` report a mean
+  channel delta, a best-fit offset per font size, and DOM-attributed differences — the hand-rolled
+  mechanisms are the fallback. The variable-font bullet cross-references the per-size gradient.
+- **A large diff is a reason to doubt the capture first** — an overlay still composited, a dev-only
+  panel left visible, fonts not finished loading. Folded into §7's existing "Validate the comparison
+  before trusting its verdict" bullet rather than repeated as a separate rule.
 
 ## 1.8.0
 
@@ -154,3 +168,4 @@ What changed:
 - Required Figma MCP flow: get_design_context, get_metadata, get_screenshot, get_variable_defs
 - Anti-hallucination constraints for styles, colors, borders, positioning, and spacing
 - Screenshot-based 1:1 verification step
+

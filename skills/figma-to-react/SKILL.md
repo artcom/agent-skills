@@ -142,11 +142,15 @@ without it, and mention the gap in the final summary.
 3. Call **`get_screenshot`** (aka `get_image`) for a visual reference of the exact variant.
 4. Pull Figma variables with **`get_variable_defs`** if available, and map them to the project's
    existing design tokens (see Tokens below).
-5. **Search the project's component directory for an existing component to reuse** before writing
+5. If the target spans multiple linked frames (a flow, not a single screen), pull each frame's
+   click wiring via the Figma REST API's `interactions` field before implementing — see
+   "Prototype interactions" below. Do this before writing navigation/state code, not after.
+6. **Search the project's component directory for an existing component to reuse** before writing
    anything new. Reuse is mandatory — only create a new component if nothing fits.
-6. Only after you have context + screenshot + reuse decision: download any needed assets, then
-   implement — applying whichever companion skills the user opted into (section 2).
-7. **Verify 1:1** against the screenshot (see Verification) before marking the task complete.
+7. Only after you have context + screenshot + reuse decision (+ interaction map, if step 5
+   applied): download any needed assets, then implement — applying whichever companion skills the
+   user opted into (section 2).
+8. **Verify 1:1** against the screenshot (see Verification) before marking the task complete.
 
 ## 4. Implementation rules
 
@@ -229,7 +233,8 @@ without it, and mention the gap in the final summary.
   Do not chase this with per-element nudges before checking which font file is loaded: a
   `margin-top` or `line-height` tweak that lines up one heading will be wrong at every other size.
   Verify by measuring the offset at two very different font sizes — if the pixel error grows with
-  size, it is the font files, not the CSS.
+  size, it is the font files, not the CSS. `design-diff explain` reports exactly this gradient
+  (see §7, "How to actually measure").
 
   Expect a **residual of up to ~1 px on large text even after this**: browsers snap the baseline to
   a whole pixel where Figma places it on a fraction. That last pixel is not worth per-size hacks.
@@ -252,6 +257,38 @@ rather than a value you port — and porting a static design specifies nothing a
 includes transitions, or a finished screen's animation is reported as rough or stuttering, use the
 [`react-transition-performance`](../react-transition-performance/SKILL.md) skill; profile before
 changing anything. Nothing else in this skill depends on it.
+
+### Prototype interactions (click-through flows)
+
+The Figma MCP tools describe layout and style, not behavior. `get_metadata`'s node map is
+explicitly limited to id/type/name/position/size — a design where frames link to each other via
+"on click → navigate" cannot be read from it at all, and it is easy to conclude a flow has no
+interactivity just because that tool didn't show any.
+
+- **Detect wiring from `get_design_context` output first.** A node carrying an `ON_CLICK` →
+  `NAVIGATE` reaction renders as a clickable `<a>` (with `cursor-pointer`); a visually identical
+  sibling with no reaction renders as a plain `<div>`. When a design shows a primary/secondary
+  button pair and only one comes back as an `<a>`, that is the file telling you only one is
+  actually wired — don't wire both into equivalent handlers just because they look like a pair.
+- **Get authoritative wiring from the Figma REST API when you need to confirm it across many
+  nodes/screens** — none of the bundled MCP tools expose this field directly. Call
+  `GET https://api.figma.com/v1/files/:fileKey/nodes?ids=<nodeId>` (or `/v1/files/:fileKey` for
+  the whole file) with header `X-Figma-Token: <token>` (commonly already available as a
+  `FIGMA_TOKEN` env var). Each node in the response carries an `interactions` array —
+  `trigger.type` (e.g. `ON_CLICK`) and `actions` (e.g.
+  `{ type: "NODE", navigation: "NAVIGATE", destinationId: "<nodeId>" }`). Walk the returned tree,
+  collect every node with a non-empty `interactions`, and resolve each `destinationId` against
+  the same tree's node names to build a click → next-frame map.
+- **A frame that never appears as a `destinationId` is orphaned.** Before wiring every frame the
+  user points at into a reachable state, check whether its node id shows up as a destination
+  anywhere in the pulled interaction data. A frame with no incoming reaction isn't part of the
+  click-through flow — flag it instead of silently including it as if it were reachable.
+- **Translate the wiring, not just the pixels.** When a Figma flow becomes app state (routes, a
+  step machine, a `next`-id field in config, a click handler that advances a `useState`, etc.),
+  carry over the same live/dead-end distinction the file encodes: a button with a reaction gets a
+  real handler that advances state; a button without one must stay inert, even though it has
+  identical button styling to the one next to it. Guessing that a good-looking button "must" do
+  something produces a UI that lets users advance down a path the design never actually wired.
 
 ### Strokes / borders (do not translate a Figma Stroke to a CSS `border`)
 
@@ -444,6 +481,12 @@ one spends image tokens:
   sees the pixels, only the printed result — which is why these are cheap *except* the per-mark pass,
   whose per-element arrays are what makes it token-expensive.
 
+If `@artcom/design-diff` is available in the project, prefer it over hand-rolling the pixel pass:
+`design-diff verify`, then `design-diff explain <scenario>` when that fails — it reports a mean
+channel delta, a best-fit pixel offset **per font size** (the gradient that identifies a variable-font
+mismatch, see §4 Tokens), and the strongest differences attributed to DOM elements. Without it, the
+three mechanisms above are the fallback — but diff programmatically either way, never by inspection.
+
 Print one number (or one coordinate) per question you're answering. A script that dumps a full array
 when you needed a single offset is the expensive mistake, not the measuring itself.
 
@@ -467,7 +510,10 @@ when you needed a single offset is the expensive mistake, not the measuring itse
   big >8 count with a flat >32 count means **large-area fill**, not text antialiasing; a small >8
   with a proportional >32 means edges and glyphs, which is normal.
 - **Validate the comparison before trusting its verdict.** A bad number is a claim about *either* the
-  code or the harness. If the diff is elevated almost everywhere — including regions that are plain
+  code or the harness, and a *large* number is a reason to doubt the capture first: a design overlay
+  still composited, a dev-only panel left visible, or fonts not finished loading all produce
+  enormous, confident numbers that have nothing to do with the code. Confirm the capture is sound
+  before changing any CSS. If the diff is elevated almost everywhere — including regions that are plain
   background in both images — the baseline is misaligned, not the layout: suspect the export crop
   first. Two traps: a full-frame export carries **bleed around the frame that need not be symmetric**,
   so the content origin is not simply (bleed, bleed) — measure a known landmark instead of assuming it;
