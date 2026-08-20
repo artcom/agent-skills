@@ -2,7 +2,7 @@
 name: skill-selection
 description: Choose the right skill when several match, and follow the chosen skill's required flow to completion instead of stopping at "it renders". Use at the START of any task that could match a skill — especially design-to-code, Figma, or any request where both a custom/org skill and a bundled plugin skill could apply.
 metadata:
-  version: 1.0.0
+  version: 1.0.1
   author: ART+COM
 ---
 
@@ -63,7 +63,8 @@ checklist" is the authoritative list of gotchas that make a "done" screen actual
 design (resolving real tokens vs `var()` fallbacks, exact per-node type + numeral features, real
 icon assets, the surface-elevation ladder, size constraints, fixed pitch vs `space-between`,
 cache/delivery staleness, overlay sync, etc.). Don't duplicate it here — run through it there
-before calling a Figma implementation done.
+before calling a Figma implementation done, escalating to `figma-measure` for any element that still
+reads as off.
 
 ## 3. Self-check before finishing
 

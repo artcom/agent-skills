@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- Point the Figma pixel-fidelity contract at `figma-measure` for escalation: `figma-to-react` §7
+  remains the authoritative checklist, but the measurement techniques for an element that still
+  reads as off now live in that companion skill.
+
 ## 1.0.0
 
 - Initial release

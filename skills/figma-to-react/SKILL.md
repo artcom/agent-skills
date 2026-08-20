@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.9.0
+  version: 1.10.0
   author: ART+COM
 ---
 
@@ -200,6 +200,19 @@ without it, and mention the gap in the final summary.
   content comes from, defaulting to the behaviour already verified. If a single component accumulates
   several such flags, say so in the summary — it is usually design drift the designer should confirm,
   not intent.
+- **A screen's states are separate frames and disagree like separate instances do.** Before/after an
+  interaction — a plan accepted, a row expanded — is its own frame, and designers update one and not
+  the other. Check the state frames against each other, not just each against your render: wording
+  that changes when nothing in the data changed, or a layout that only differs by state, is nearly
+  always an un-swept frame rather than intent. Follow each frame for its own state and list the
+  disagreements in the summary. A fix derived from one state frame can regress another — see "After
+  changing a shared component" in [`figma-measure`](../figma-measure/SKILL.md).
+- **One data field driving two visuals will eventually be asked to split.** This is Figma's
+  per-frame divergence reaching your data model: a `tone` that colours both a marker and a status dot
+  is fine until one frame recolours the marker alone. When that happens, add the narrower control
+  (`badgeTone: "neutral"`) rather than changing the shared field — flipping `tone` fixes the marker
+  and silently recolours the dot, which nobody asked for and no screen-wide metric will show you
+  (`figma-measure` §3 is how you'd catch it).
 - Import and apply styles the way the rest of the project does (e.g. `styles.foo` for CSS Modules,
   `className="..."` for Tailwind, a styled-component call, etc.).
 
@@ -234,7 +247,7 @@ without it, and mention the gap in the final summary.
   `margin-top` or `line-height` tweak that lines up one heading will be wrong at every other size.
   Verify by measuring the offset at two very different font sizes — if the pixel error grows with
   size, it is the font files, not the CSS. `design-diff explain` reports exactly this gradient
-  (see §7, "How to actually measure").
+  (see [`figma-measure`](../figma-measure/SKILL.md)).
 
   Expect a **residual of up to ~1 px on large text even after this**: browsers snap the baseline to
   a whole pixel where Figma places it on a fraction. That last pixel is not worth per-size hacks.
@@ -348,22 +361,27 @@ drops off the baseline shared by the others.
 ## 6. Verification
 
 This section is the **flow**; §7 is its companion and holds the substance — what the recurring
-mismatches are, and how to measure one you can't explain by eye. Run these in order:
+mismatches are, and where to escalate one you can't explain by eye. Run these in order:
 
 1. Re-fetch `get_screenshot` and compare it against the rendered code. Before comparing against a
-   *committed* export instead (an overlay image, a sync baseline — steps 5 and 6), diff a fresh
+   *committed* export instead (an overlay image, a sync baseline — steps 6 and 7), diff a fresh
    export against it first: a stale reference reads as a code defect. See "Stale baselines" under
    "Verify & deliver".
-2. Fix any layout drift, spacing mismatch, wrong colour, or extra border **before** finishing. If the
+2. Proofread every string on the screen against the export, and check every element's position and
+   fill against it — the whole frame, not the part you were asked about. See "Read the design, don't
+   just diff it" under "Verify & deliver": this is the largest class of defect, the cheapest to
+   prevent, and no pixel metric will raise it for you. Read before you measure or fix.
+3. Fix any layout drift, spacing mismatch, wrong colour, or extra border **before** finishing. If the
    screenshot has a clean background but your CSS added a border, remove it.
-3. Work through §7 for the screen you just built — by area (tokens & colour, type, icons, layout),
-   then "Verify & deliver" for anything still unexplained.
-4. Run the app with its own dev command from `package.json` (a `/run` skill, if installed, can launch
+4. Work through §7 for the screen you just built — by area (tokens & colour, type, icons, layout),
+   then "Verify & deliver". Escalate anything still unexplained to the
+   [`figma-measure`](../figma-measure/SKILL.md) skill.
+5. Run the app with its own dev command from `package.json` (a `/run` skill, if installed, can launch
    it for you) to confirm visually.
-5. If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
+6. If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
    exported design image.
-6. If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
-7. Lint using the project's own lint command before finishing.
+7. If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
+8. Lint using the project's own lint command before finishing.
 
 Don't treat step 1 as the whole of verification: a screenshot comparison by eye catches boxes and
 colours, and reliably misses the per-element errors §7 exists for.
@@ -414,10 +432,9 @@ get handled.
   screen's version of it gets rendered by code whose `font-weight` was read from a *different* node. A
   design routinely sets one heading in Bold while its siblings are Medium — re-read the font style the
   codegen reports (`<Family>:Bold` vs `<Family>:Medium`) for the node in front of you rather than
-  trusting what the component already does. Weight errors are nearly invisible by eye and barely move an aggregate
-  diff; **ink coverage** settles it objectively — crop the heading in render and export, count pixels
-  darker than mid-grey, and compare. Equal ink in two different exports also proves the weight is not
-  a per-instance override, so the fix belongs in the shared component.
+  trusting what the component already does. Weight errors are nearly invisible by eye and barely move
+  an aggregate diff; **ink coverage** settles it objectively — see "Weight differences need ink" in
+  [`figma-measure`](../figma-measure/SKILL.md).
 - **Fix the font before the size.** Different families size differently per px, so matching a
   size by eye with the wrong family gives a compensating value that's wrong once the right font
   loads. Set `font-family` first, then apply the design's real `font-size`.
@@ -467,90 +484,26 @@ get handled.
 
 ### Verify & deliver
 
-**How to actually measure.** The techniques below use three different mechanisms, and only the first
-one spends image tokens:
+**Read the design, don't just diff it.** Measurement finds what you thought to look for. In practice
+the largest class of "slightly off" is not layout at all and no metric raises it: a label the design
+sets in sentence case and the code sets in title case, a stray space in a composed string, a list row
+whose content is simply stale, a mark placed on the wrong side of a figure. Each touches a few
+hundred pixels of a multi-megapixel frame, so every screen-level number stays green while a reader
+sees the mistake immediately. Before measuring anything, read the export: every string against the
+rendered string, every mark and badge against its position in the design. Where the copy lives in a
+config/CMS layer rather than the component, proofread that layer — the design is the source for the
+words too, not just the boxes. Text you did not personally check against the export is unverified,
+however good the diff looks.
 
-- **Difference-blend overlay** — composite your render and the design export into one image, then
-  *look* at it. This is the only step where an image goes to the model.
-- **Box geometry** (`getBoundingClientRect`) — browser JS evaluated against the **running app** (e.g.
-  Playwright/CDP `page.evaluate`), returning a handful of numbers as text. Needs the app running.
-- **Pixel statistics** (ink coverage, two-threshold diff counts, first-column-with-ink, the
-  `getImageData` per-mark pass) — a **short throwaway script you write** that reads the two PNGs and
-  prints numbers: Node with `sharp`/`pngjs`, Python with PIL, or `magick` on the command line. Use
-  whatever the project or environment already has; don't add a dependency to measure. The model never
-  sees the pixels, only the printed result — which is why these are cheap *except* the per-mark pass,
-  whose per-element arrays are what makes it token-expensive.
+**Default fidelity, then escalate.** The cheap pass applies to every element and is all most runs
+need: read the exact specs per node (the sections above), do the read pass just described, and
+eyeball **one** `difference`-blend overlay of your render on the design export (matching pixels go
+black). Escalate to precise measurement only when a specific element is still flagged as off, the
+overlay shows drift you can't explain by eye, or the user asks whether *any* member of a class of
+elements is wrong. That is what the [`figma-measure`](../figma-measure/SKILL.md) skill is for — which
+mechanism to use, how to prove the check can actually see the defect, and how to read the number it
+returns. Don't measure to learn the spec: `get_design_context` states it outright.
 
-If `@artcom/design-diff` is available in the project, prefer it over hand-rolling the pixel pass:
-`design-diff verify`, then `design-diff explain <scenario>` when that fails — it reports a mean
-channel delta, a best-fit pixel offset **per font size** (the gradient that identifies a variable-font
-mismatch, see §4 Tokens), and the strongest differences attributed to DOM elements. Without it, the
-three mechanisms above are the fallback — but diff programmatically either way, never by inspection.
-
-Print one number (or one coordinate) per question you're answering. A script that dumps a full array
-when you needed a single offset is the expensive mistake, not the measuring itself.
-
-- **Scale verification effort to the element — don't measure everything.** Default fidelity is
-  cheap and applies to every element: read exact specs (the sections above) and eyeball **one**
-  `difference`-blend overlay of your render on the design export (matching pixels go black).
-  Escalate to precise measurement only when a specific element is flagged as still-off or the
-  overlay shows drift you can't explain by eye: compare `getBoundingClientRect` to the Figma
-  coords (boxes match but text still ghosts → inherent Figma-vs-browser glyph-baseline diff, not a
-  bug to chase; boxes offset → real layout error). The canvas `getImageData` per-mark pass
-  (center/height/color arrays) is **token-expensive — reserve it for one hero/repeated element the
-  user flags**, never as a routine sweep. Measuring locates an unexplained difference and confirms a
-  fix — it is not how you learn the spec, which `get_design_context` states outright. So: localize
-  once, read the spec, fix, re-measure **once** across the affected screens, and report only the
-  numbers that changed a decision.
-- **Split the diff by magnitude — a wrong container fill hides from a severity-only check.** If you
-  reduce a comparison to one number, count differing pixels at *two* thresholds (e.g. >8/255 and
-  >32/255). A wrong surface colour is a low-delta error over a huge area: neighbouring greys differ
-  by ~10-20, so it barely moves the >32 count while dominating the >8 count. A screen can therefore
-  look "at parity" on a single severity metric while a whole panel is visibly the wrong colour. A
-  big >8 count with a flat >32 count means **large-area fill**, not text antialiasing; a small >8
-  with a proportional >32 means edges and glyphs, which is normal.
-- **Validate the comparison before trusting its verdict.** A bad number is a claim about *either* the
-  code or the harness, and a *large* number is a reason to doubt the capture first: a design overlay
-  still composited, a dev-only panel left visible, or fonts not finished loading all produce
-  enormous, confident numbers that have nothing to do with the code. Confirm the capture is sound
-  before changing any CSS. If the diff is elevated almost everywhere — including regions that are plain
-  background in both images — the baseline is misaligned, not the layout: suspect the export crop
-  first. Two traps: a full-frame export carries **bleed around the frame that need not be symmetric**,
-  so the content origin is not simply (bleed, bleed) — measure a known landmark instead of assuming it;
-  and crop tools each order their arguments differently (height/width, top/left, x/y), so a swapped
-  pair shifts the baseline a few px in both axes and manufactures a large, diffuse diff. Also confirm
-  you fetched the **full-resolution** export rather than a downscaled preview — endpoints often serve
-  one while reporting the original dimensions in their metadata. Sanity-check by sampling one pixel of
-  known background in both images before diagnosing anything.
-- **Inspect small elements at 1:1 or magnified — never from a downscaled composite.** Stacking your
-  render beside the export and shrinking it to fit is the cheapest thing to look at and the easiest
-  way to certify a defect as fine: a 2x downscale erases exactly the 1-3px insets, stroke weights and
-  pill radii that make an element read as "off". If an element is under 100px, crop it at native
-  resolution and scale **up** (nearest-neighbour) before judging it.
-- **Sample a rounded shape at its centre line, not near its corners.** Probing a pill's height in a
-  column that falls inside the corner radius reports a value several px short, and comparing two such
-  probes manufactures a difference that is not there (or hides one that is). Take the vertical extent
-  at the horizontal midpoint and the horizontal extent at the vertical midpoint.
-- **A whole-screen metric cannot see a single element being wrong — measure the element's own edge.**
-  One text line shifted, or one weight too light, touches a tiny fraction of the frame, so it moves a
-  whole-screen mean by less than the run-to-run noise: "the numbers are fine" is not evidence that a
-  flagged element is right, and the larger the canvas the more true that gets. Measure the thing
-  directly: scan the element's band in both images for the **first column (or row) containing ink** and
-  compare the coordinates. That yields an exact pixel offset and, unlike a mean, points at a cause — a
-  delta on one text row whose siblings align is a missing padding/inset on that row, not a font issue.
-- **When alignment drifts in a repeated list/table, measure pitch vs. offset before guessing.** A
-  *constant* offset across all items means a one-time height mismatch in an element **above** the list
-  (see "A frame's height is not its text's line-height" in §4); a *growing* offset means a per-item
-  pitch error (wrong row height or an unexpected gap). Measuring the position of repeating landmarks
-  (e.g. alternating row backgrounds) in the render vs. the design export tells the two apart
-  objectively and points straight at the cause.
-- **Changing a shared component is a multi-screen change — re-measure every screen that renders it,
-  and treat a worse number as evidence.** A single screen's diff can improve while a sibling's
-  degrades; averaging or checking only the screen you're working on hides it. If a metric moves the
-  wrong way after a change you believe is correct, the design almost certainly differs per instance
-  (see "Two instances of one Figma component can differ" in §4) — go sample both exports at that
-  element before overriding the measurement with your reasoning. The screen that **doesn't** move is
-  equally informative: it localizes the cause to the components the moved screens don't share with it.
 - **Beyond §3's per-node fetch, don't reconstruct a rich sub-component from the overview
   screenshot.** A media card / carousel / chart has assets and styles you'll fake otherwise — a
   6-thumbnail strip is six *different* images, and image crops are explicit (Figma gives

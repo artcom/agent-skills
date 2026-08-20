@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.10.0
+
+Five rules from one session where the same details had to be corrected several times over, plus the
+extraction they made unavoidable. Every correction was caught by the user, not by the verification
+the skill already prescribes: roughly twenty of ~28 defects were things plainly visible in the export
+that nobody had read — wrong casing, a stray space, a mark on the wrong side of a figure, stale list
+rows — three were regressions introduced while fixing others, and only about four were genuine
+design-side inconsistencies. The lesson is not "designs were ambiguous"; it is that the pipeline
+measured instead of reading, and measurement only finds what you thought to look for.
+
+- **Extracted §7's measurement half into the new
+  [`figma-measure`](../figma-measure/SKILL.md) skill.** "Verify & deliver" had grown into a 150-line
+  forensic manual — mechanisms, calibration, magnitude splits, pitch-vs-offset, shared-component
+  collateral — that every run loaded although it only applies once an element is already flagged as
+  off. Same reasoning as 1.7.0's motion extraction. §7 keeps the cheap default pass (read the specs,
+  read the export, one difference-blend overlay), the escalation gate, and the delivery/staleness
+  rules; §7 is down from 243 to 146 lines.
+
+- **Read the design, don't just diff it** (§7, Verify & deliver, and a new §6 step 2). The largest
+  class of "slightly off" is copy and placement that no pixel metric will ever surface, because each
+  instance touches a few hundred pixels of a multi-megapixel frame. Proofread every string against
+  the export and check every mark's position, across the whole frame, **before** measuring or fixing
+  — and proofread the config/CMS layer when the copy lives there, since the design is the source for
+  the words too.
+
+- **States are frames too, and one field driving two visuals will be asked to split** (§4,
+  Components). Before/after frames disagree the way two instances do, and designers sweep one and not
+  the other. When a frame recolours a marker but not its status dot, add the narrower control rather
+  than flipping the field both read — Figma's per-frame divergence reaching the data model. Both
+  bullets point at `figma-measure` for the collateral they cause.
+
+Moved to `figma-measure` and sharpened there rather than in this skill: the class-inventory rule
+("is any X wrong?" needs two lists, not a percentage), the calibration rule (a null result from a
+check that cannot see the defect is not evidence — a 12% chromatic threshold passes `#8dafa0`
+against `#838983`), and element-level re-measurement after a shared-component change.
+
 ## 1.9.0
 
 - **Correcting the font files invalidates every nudge that was compensating for them** (§4, Tokens).

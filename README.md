@@ -13,6 +13,7 @@ A collection of reusable [AI agent skills](https://skills.sh/) by [ART+COM](http
 | [react-pixel-overlay](/skills/react-pixel-overlay/SKILL.md)     | Set up and use [react-pixel-overlay](https://github.com/artcom/react-pixel-overlay), the PerfectPixel-style design overlay for verifying pixel-perfect React implementations against design exports  |
 | [figma-sync](/skills/figma-sync/SKILL.md)                       | Track drift between Figma designs and generated code with the `figma-sync` CLI — baseline design + code hashes, report sync status per component, and gate CI on design drift                        |
 | [figma-preflight](/skills/figma-preflight/SKILL.md)             | Preflight a Figma file for design-to-code fidelity before codegen — detect source-fixable defects (unbound colors, collapsed surface tokens, substituted fonts) and report or repair them in Figma   |
+| [figma-measure](/skills/figma-measure/SKILL.md)                 | Measure and diagnose one flagged Figma-vs-render difference — pick the mechanism, prove the check can see the defect, and read the number it returns                                                  |
 | [react-transition-performance](/skills/react-transition-performance/SKILL.md) | Diagnose and fix janky view transitions in a React app — profile first to identify which frame phase is at fault, then apply the fix that phase actually needs                          |
 
 ## Installation
