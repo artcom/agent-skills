@@ -1,8 +1,8 @@
 ---
 name: mqtt-topping
-description: Use mqtt-topping to connect to MQTT brokers and query MQTT data over HTTP. Use when the user says "connect to MQTT", "subscribe to a topic", "publish a message", "query MQTT data", or "clear retained messages". Also use for pub/sub patterns, IoT applications, HiveMQ integration, or debugging MQTT connection and subscription issues — even if mqtt-topping isn't mentioned by name. Use when you encounter mqtt-topping imports in existing code.
+description: Use mqtt-topping to connect to MQTT brokers and query MQTT data over HTTP. Use when the user says "connect to MQTT", "subscribe to a topic", "publish a message", "query MQTT data", or "clear retained messages". Also use for pub/sub patterns, IoT applications, HiveMQ integration, or debugging MQTT connection and subscription issues — even if mqtt-topping isn't mentioned by name. Use when you encounter mqtt-topping imports in existing code. In React apps use the @artcom/mqtt-topping-react wrapper (MqttProvider, useMqttSubscribe, useMqttQuery).
 metadata:
-  version: 1.0.0
+  version: 1.1.0
   author: ART+COM
 ---
 
@@ -12,7 +12,8 @@ metadata:
 
 - Repository: https://github.com/artcom/mqtt-topping
 - ESM-only, requires Node.js >= 22.0.0
-- Install: `npm install mqtt-topping`
+- Install: `npm install @artcom/mqtt-topping` (the unscoped `mqtt-topping` on npm is stale at 4.0.1; the scoped package is current)
+- **React apps: use the wrapper instead** — https://github.com/artcom/mqtt-topping-react
 
 > **For the latest API details**, fetch the current README:
 > https://raw.githubusercontent.com/artcom/mqtt-topping/master/README.md
@@ -36,7 +37,7 @@ These are the behaviors that most commonly cause bugs:
 ## Complete Example
 
 ```typescript
-import { MqttClient, HttpClient } from "mqtt-topping";
+import { MqttClient, HttpClient } from "@artcom/mqtt-topping";
 
 // Connect — always provide onParseError
 const client = await MqttClient.connect("mqtt://broker.example.com", {
@@ -77,6 +78,120 @@ const http = new HttpClient("http://mqtt-http-endpoint.com", {
 const result = await http.query({ topic: "home/livingroom", depth: 2 });
 const asObject = await http.queryJson("home/livingroom");
 ```
+
+## React — Use `@artcom/mqtt-topping-react`
+
+In a React app, don't wire up `MqttClient` by hand. Use the official wrapper, which provides a
+context provider and hooks (and bundles TanStack Query for the HTTP queries):
+
+- Repository: https://github.com/artcom/mqtt-topping-react
+- Install: `npm install @artcom/mqtt-topping-react` — it depends on `@artcom/mqtt-topping` and
+  `@tanstack/react-query`, so don't install those separately. Peer deps: React >= 19.2.
+- The package re-exports everything from `@artcom/mqtt-topping`, so `MqttClient`, `HttpClient`,
+  and the error types can be imported from `@artcom/mqtt-topping-react` too.
+
+> **The wrapper's README is out of date in places** (verified against v3.2.1 source and the
+> published `dist/index.d.ts`). Trust the source over the README, or re-verify:
+> https://github.com/artcom/mqtt-topping-react/blob/master/src/index.ts
+
+```tsx
+import {
+  MqttProvider,
+  useMqttSubscribe,
+  useMqttState,
+  useMqttQuery,
+  useMqttStatus,
+} from "@artcom/mqtt-topping-react";
+
+// Hoist options — see gotcha below. An inline object reconnects on every render.
+const MQTT_OPTIONS = {
+  onParseError: (error: Error, topic: string) =>
+    console.warn(`Bad payload on ${topic}:`, error.message),
+};
+
+function App() {
+  return (
+    <MqttProvider
+      uri="ws://broker.example.com:9001"
+      options={MQTT_OPTIONS}
+      httpBrokerUri="http://broker.example.com:8080/query" // required for useMqttQuery
+    >
+      <Dashboard />
+    </MqttProvider>
+  );
+}
+
+function Dashboard() {
+  const { status, error } = useMqttStatus();
+
+  // Fire-and-forget handler — no useCallback needed, see below
+  useMqttSubscribe("sensors/+/reading", (payload, topic) => {
+    console.log(topic, payload);
+  });
+
+  // Or keep the latest retained message in state
+  const reading = useMqttState<{ temperature: number }>("sensors/a/reading");
+
+  const { data, isLoading } = useMqttQuery("home/livingroom");
+
+  if (status !== "connected") return <div>{error?.message ?? "Connecting…"}</div>;
+  if (isLoading) return <div>Loading…</div>;
+  return <pre>{JSON.stringify({ reading, data }, null, 2)}</pre>;
+}
+```
+
+### `MqttProvider` props
+
+| Prop            | Type                | Notes                                                            |
+| --------------- | ------------------- | ---------------------------------------------------------------- |
+| `uri`           | `string`            | Broker URI (`tcp://…` in Node, `ws://…`/`wss://…` in the browser) |
+| `options`       | `MqttClientOptions` | Same options as `MqttClient.connect` — pass `onParseError` here   |
+| `httpBrokerUri` | `string`            | HTTP query endpoint; without it there is no `HttpClient`          |
+| `httpOptions`   | `HttpClientOptions` | e.g. `requestTimeoutMs`                                           |
+
+The provider also mounts its own `QueryClientProvider` (a module-level `QueryClient`), so
+TanStack Query works without extra setup.
+
+> The README documents a `suspenseFallback` prop. **It does not exist** — it survives only in a
+> JSDoc comment and is absent from `MqttProviderProps` and the published types. Use
+> `useMqttStatus()` to render a connecting state, or `useMqttSuspense()` inside a `<Suspense>`
+> boundary.
+
+### Hooks (exported from the package root)
+
+| Hook                                | Returns / purpose                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| `useMqttSubscribe(topic, handler)`  | Subscribes for the component's lifetime, auto-unsubscribes on unmount   |
+| `useMqttState(topic, initial?)`     | `useMqttSubscribe` + `useState`: latest payload for a topic             |
+| `useMqttPublisher()`                | `(topic, payload) => Promise<void>`; throws if not connected            |
+| `useMqttQuery(topic, options?)`     | TanStack `useQuery` over `httpClient.queryJson` (`retry` defaults false)|
+| `useMqttUnpublishRecursively()`     | `(topic, options?) => Promise<…>`; clears a topic and all subtopics     |
+| `useMqtt()`                         | The raw `MqttClient`, or `null` while connecting                        |
+| `useHttpClient()`                   | The raw `HttpClient`, or `null` when no `httpBrokerUri` is set           |
+| `useMqttStatus()`                   | `{ status: "connecting" \| "connected" \| "disconnected" \| "error", error }` |
+| `useMqttSuspense()`                 | Throws the connection promise/error — for `<Suspense>` boundaries       |
+
+> `useMqttQueryBatch` exists in the source (and its README section) but is **not exported** from
+> `src/index.ts`, so it cannot be imported from the package root as of v3.2.1. Use several
+> `useMqttQuery` calls, or `useHttpClient()?.queryJsonBatch(...)` directly.
+
+### React gotchas
+
+- **Pass a stable `options` / `httpOptions` object.** The provider's `useMemo(() => options,
+  [options])` does not deep-compare, and the connection effect depends on it — an inline object
+  literal is a new reference every render, so the client disconnects and reconnects in a loop.
+  Hoist the object to module scope or wrap it in your own `useMemo`. Same for `httpOptions`,
+  which otherwise rebuilds the `HttpClient` (and invalidates every `useMqttQuery` cache key).
+- **Browser builds must use WebSockets** (`ws://` / `wss://`), not `tcp://`.
+- **The subscribe handler does *not* need `useCallback`.** `useMqttSubscribe` keeps it in a ref
+  and its effect depends only on `[client, topic]`, so an inline arrow function is fine and does
+  not cause resubscribe churn.
+- **`useMqttQuery` reads retained data once over HTTP** — it is not a live subscription. Combine
+  it with `useMqttSubscribe`/`useMqttState` when you need push updates.
+- `useMqttQuery` sets `retry: false` by default (unlike TanStack's default of 3);
+  `useMqttQueryBatch` does not. Both stay `enabled: false` until the `HttpClient` exists.
+- All the base-library gotchas above still apply (retain defaults to `true`, silent parse errors
+  without `onParseError`, QoS 2 default) — pass `onParseError` via the provider's `options`.
 
 ## MqttClient API
 
