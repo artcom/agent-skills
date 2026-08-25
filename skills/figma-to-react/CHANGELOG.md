@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.11.0
+
+Stop treating the Figma plugin's `figma-design-to-code` as a rival and layer on top of it instead.
+The two were never competing versions of the same skill: the plugin owns the tool contract, this
+skill owns house rules, and they contradict each other nowhere — every overlap is this skill stating
+the same rule more strictly. Choosing between them, as `skill-selection` prescribed, silently
+discarded five things only the plugin covers.
+
+- **New §0.5 "Relationship to the Figma plugin's `figma-design-to-code`".** Load the plugin skill
+  first for the tool contract, then this one on top; this one wins on conflict. Names the five rules
+  to carry over rather than restating them: the response-hint priority ladder (Code Connect →
+  component docs → design annotations → tokens → raw hex), the ~7-day expiry on MCP asset URLs,
+  glyph-match before reusing a project icon, explicit icon sizing, and error recovery.
+- **Two of those five bite in practice.** This skill never mentioned Code Connect at all, so an agent
+  following it alone re-derives components a designer had already mapped. And it said "download
+  assets" without saying why — a committed `figma.com/api/mcp/asset/...` URL renders today and 404s
+  next week.
+- **Description is now self-routing** ("Load ALONGSIDE the Figma plugin's `figma-design-to-code`
+  skill…"), so the layering no longer depends on an external arbiter reading it correctly.
+- **Removed the `skill-selection` skill from this repo.** Its only concrete rule was picking this
+  skill over the plugin's, which §0.5 replaces; its completion checklist duplicated §2, §5 and §6.
+  Of the org's skills, only the Figma pair ever collided with a bundled plugin skill.
+
 ## 1.10.0
 
 Five rules from one session where the same details had to be corrected several times over, plus the

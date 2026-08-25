@@ -1,8 +1,8 @@
 ---
 name: figma-to-react
-description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
+description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Load ALONGSIDE the Figma plugin's `figma-design-to-code` skill — that one owns the tool-call contract and response-hint priority, this one layers ART+COM project conventions and pixel fidelity on top and overrides it on conflict. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.10.0
+  version: 1.11.0
   author: ART+COM
 ---
 
@@ -37,6 +37,33 @@ native size, an unbound literal gets bound, a substituted font gets replaced. Ev
 left in code for a source problem becomes a *new* defect the moment the source is fixed, so treat
 "which of my compensations are now unnecessary?" as part of re-implementing, and delete the ones the
 file no longer needs.
+
+## 0.5 Relationship to the Figma plugin's `figma-design-to-code`
+
+The Figma plugin ships a `figma-design-to-code` skill that owns the **tool contract**: how to call
+`get_design_context`, what its response hints mean, and how its assets behave. That is Figma's to
+maintain and tracks their MCP API — this skill deliberately does not duplicate it.
+
+**Load it first, then layer this skill on top.** This skill wins wherever they disagree (project
+conventions, styling system, component structure, anything `AGENTS.md` says). They do not otherwise
+conflict — every overlap is this skill stating the same rule more strictly.
+
+Carry these over from it; they are not restated below:
+
+- **Apply the response hints by priority**, earlier overriding later: Code Connect snippets (use the
+  mapped codebase component directly) → component documentation links → design annotations → design
+  tokens → raw hex / absolute positioning. A file with Code Connect mappings has already answered
+  §3's "search the project for an existing component to reuse" — check the hints before searching.
+- **Asset URLs expire in ~7 days.** The `https://.../api/mcp/asset/...` URL renders immediately but
+  404s later. For code you commit, download and commit the exact asset bytes, or wire the image to
+  the project's data source. Never commit the MCP URL itself.
+- **Reuse a project icon only if its glyph clearly matches** — a name match is not enough.
+- **Size icons explicitly:** a fixed-size container with both width and height set, and the leaf
+  `<img>` sized to fill it (`100%` or fixed px) — never `auto`, which blows the image up to its
+  intrinsic size.
+- **Error recovery:** read a `get_design_context` error before retrying; a file-only URL with no
+  `node-id` means asking the user for a node-specific URL, never guessing; on timeout retry against
+  a smaller node; never silently fall back to hand-writing the screen from the screenshot alone.
 
 ## 1. Learn the project before touching Figma
 
