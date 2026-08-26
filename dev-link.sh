@@ -2,24 +2,36 @@
 #
 # dev-link.sh — live-edit skills from this repo in your coding agent(s).
 #
-# Symlinks a skill's folder in this repo directly into an agent's GLOBAL
-# skills directory, so edits to skills/<name>/SKILL.md are picked up
-# immediately — no reinstall between iterations. Use this while developing
-# a skill; when you're done, `unlink` and go back to the published version
-# via `npx skills update`.
+# Symlinks a skill's folder in this repo directly into an agent's skills
+# directory, so edits to skills/<name>/SKILL.md are picked up immediately —
+# no reinstall between iterations. Use this while developing a skill; when
+# you're done, `unlink` and go back to the published version via
+# `npx skills update`.
+#
+# Links go into the agent's GLOBAL skills dir by default. Pass --project to
+# scope them to a single application repo instead, so an in-development skill
+# doesn't leak into every project on the machine.
 #
 # Usage:
-#   ./dev-link.sh link   [skill|all] [agent ...]   # default: all skills -> claude-code
-#   ./dev-link.sh unlink [skill|all] [agent ...]
-#   ./dev-link.sh status [agent ...]
+#   ./dev-link.sh link   [skill|all] [agent ...] [--project[=PATH]]
+#   ./dev-link.sh unlink [skill|all] [agent ...] [--project[=PATH]]
+#   ./dev-link.sh status [agent ...]             [--project[=PATH]]
 #   ./dev-link.sh help
 #
+# --project, -p        link into $PWD instead of $HOME (e.g. .claude/skills)
+# --project=PATH       link into PATH instead of $HOME
+#
 # Examples:
-#   ./dev-link.sh link                          # link every skill to Claude Code
-#   ./dev-link.sh link prototyping              # link one skill to Claude Code
+#   ./dev-link.sh link                          # link every skill to Claude Code, globally
+#   ./dev-link.sh link prototyping              # link one skill, globally
 #   ./dev-link.sh link prototyping claude-code github-copilot
-#   ./dev-link.sh unlink prototyping            # remove the dev symlink
-#   ./dev-link.sh status                        # show what's currently linked
+#   ./dev-link.sh link all --project=../my-app  # scope to one application repo
+#   ./dev-link.sh status --project              # what's linked in the current repo
+#   ./dev-link.sh unlink all --project=../my-app
+#
+# Tip: the symlinks are untracked files in the application repo. Keep its
+# `git status` clean without committing anything by adding `.claude/skills/`
+# to that repo's .git/info/exclude.
 #
 set -euo pipefail
 
@@ -27,20 +39,37 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILLS_DIR="$REPO_DIR/skills"
 
-# --- map an agent name to its GLOBAL skills directory -----------------------
+die()  { echo "error: $*" >&2; exit 1; }
+info() { echo "  $*"; }
+
+# --- where skills live, relative to the base dir ----------------------------
 # Add more agents here as needed (names match the `skills` CLI --agent values).
-agent_dir() {
+# Only claude-code's project-local convention is verified; the others reuse
+# their global subdir name.
+agent_subdir() {
   case "$1" in
-    claude-code)     echo "$HOME/.claude/skills" ;;
-    github-copilot)  echo "$HOME/.copilot/skills" ;;
-    cursor)          echo "$HOME/.cursor/skills" ;;
-    codex)           echo "$HOME/.codex/skills" ;;
+    claude-code)     echo ".claude/skills" ;;
+    github-copilot)  echo ".copilot/skills" ;;
+    cursor)          echo ".cursor/skills" ;;
+    codex)           echo ".codex/skills" ;;
     *) echo "" ;;
   esac
 }
 
-die()  { echo "error: $*" >&2; exit 1; }
-info() { echo "  $*"; }
+# Base dir for every link: $HOME (global) or a project root (--project).
+BASE_DIR="$HOME"
+
+set_base() {
+  local p="$1"
+  [ -d "$p" ] || die "not a directory: $p"
+  BASE_DIR="$(cd "$p" && pwd)"
+}
+
+agent_dir() {
+  local sub; sub="$(agent_subdir "$1")"
+  [ -n "$sub" ] || { echo ""; return; }
+  echo "$BASE_DIR/$sub"
+}
 
 # --- resolve the list of skills --------------------------------------------
 all_skills() {
@@ -63,7 +92,7 @@ resolve_skills() {
 do_link() {
   local skill="$1" agent="$2"
   local dir; dir="$(agent_dir "$agent")"
-  [ -n "$dir" ] || die "unknown agent '$agent' — add it to agent_dir() in this script"
+  [ -n "$dir" ] || die "unknown agent '$agent' — add it to agent_subdir() in this script"
   local src="$SKILLS_DIR/$skill" dst="$dir/$skill"
 
   mkdir -p "$dir"
@@ -108,13 +137,26 @@ do_status() {
 }
 
 # --- arg parsing ------------------------------------------------------------
+# Pull --project out of argv first, so it can appear anywhere.
+positional=()                                    # bash 3.2 (macOS) compatible
+for arg in "$@"; do
+  case "$arg" in
+    --project|-p) set_base "$PWD" ;;
+    --project=*)  set_base "${arg#--project=}" ;;
+    -h|--help)    positional+=("$arg") ;;
+    -*)           die "unknown option '$arg' (try: --project[=PATH])" ;;
+    *)            positional+=("$arg") ;;
+  esac
+done
+set -- ${positional[@]+"${positional[@]}"}
+
 cmd="${1:-help}"; shift || true
 
 case "$cmd" in
   link|unlink)
     skill_arg="${1:-all}"; [ $# -gt 0 ] && shift || true
     agents=("$@"); [ ${#agents[@]} -eq 0 ] && agents=(claude-code)
-    skills=()                                    # bash 3.2 (macOS) compatible
+    skills=()
     while IFS= read -r line; do skills+=("$line"); done < <(resolve_skills "$skill_arg")
     for a in "${agents[@]}"; do
       for s in "${skills[@]}"; do

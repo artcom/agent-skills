@@ -122,14 +122,39 @@ Every skill directory must contain a `SKILL.md` with YAML frontmatter (`name`, `
 
 ## Developing a Skill Locally
 
-Installing via `npx skills add` copies or symlinks a snapshot — editing `skills/<name>/SKILL.md` afterward doesn't affect what your agent sees. `dev-link.sh` symlinks a skill's folder straight from this repo into an agent's global skills directory, so edits are picked up immediately with no reinstall step:
+Installing via `npx skills add` copies or symlinks a snapshot — editing `skills/<name>/SKILL.md` afterward doesn't affect what your agent sees. `dev-link.sh` symlinks a skill's folder straight from this repo into an agent's skills directory, so edits are picked up immediately with no reinstall step:
 
 ```bash
-./dev-link.sh link              # link every skill to Claude Code
+./dev-link.sh link              # link every skill to Claude Code, globally
 ./dev-link.sh link prototyping  # link just one skill
 ./dev-link.sh status            # show what's currently linked
 ./dev-link.sh unlink prototyping
+./dev-link.sh help              # full usage
 ```
+
+### Scoping the link to one application
+
+By default the links go into the agent's **global** skills directory (`~/.claude/skills`), which makes the in-development skill visible to every project on the machine. Pass `--project` to link into a single application repo's `.claude/skills/` instead:
+
+```bash
+# from this repo, targeting the app you're developing against
+./dev-link.sh link figma-measure --project=../my-app
+./dev-link.sh status --project=../my-app
+./dev-link.sh unlink all --project=../my-app
+
+# or run it from inside the app repo — bare --project means $PWD
+/path/to/agent-skills/dev-link.sh link all --project
+```
+
+The symlinks are untracked files in the application repo. Keep its `git status` clean without committing anything by adding one line to that repo's `.git/info/exclude`:
+
+```
+.claude/skills/
+```
+
+Claude Code reads a linked `SKILL.md` body when the skill is invoked, so content edits land immediately. Changes to the frontmatter `name` or `description` need a fresh session.
+
+`dev-link.sh` never overwrites real files — if a skill of the same name is already installed there (not a symlink), it refuses and tells you. `unlink` only ever removes symlinks.
 
 When you're done, `unlink` and go back to the published version with `npx skills update`.
 
