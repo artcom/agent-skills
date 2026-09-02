@@ -120,14 +120,26 @@ When you do create per-node components, mirror the Figma component **names** and
 `figma-sync` is opted in (section 2) — add a `// figma-sync:` annotation per component so the
 node→component mapping is explicit.
 
+### Implement it, or just export it? (ask)
+
+Before implementing a node, ask what in it is actually dynamic. If you can find nothing — no live
+values, no state, no interaction, nothing the app's data layer feeds — then **offer a PNG export of
+the node as an alternative to implementing it**, and let the user choose. An export is often more
+faithful than code (nothing to reconstruct) and a fraction of the work; it only costs the ability to
+change the content at runtime. Ask this together with the section 2 question.
+
+Applies at any granularity — a whole screen, a panel, a decorative layer. In a non-interactive run,
+implement as usual and note that an export was the cheaper option.
+
 ## 2. Optional companion skills — ask the user first
 
 Three companion skills can extend this workflow. All three are **optional**: none of them is
 required to translate a design, and none may be used without the user's consent. After learning
 the project (section 1) and **before implementing**, check which of them are relevant to this
 project, then ask the user **once, in a single question** (multi-select, e.g. via
-`AskUserQuestion`) which ones to use for this task. Skip any the user declines and don't ask
-again in the same session. In a non-interactive run where the user cannot be asked, skip all
+`AskUserQuestion`) which ones to use for this task — together with the section 1 questions
+(component structure, implement vs. export), so the user is asked once. Skip any the user
+declines and don't ask again in the same session. In a non-interactive run where the user cannot be asked, skip all
 three and note that in the final summary.
 
 - **`figma-sync`** — keeps generated components verifiably in sync with their Figma nodes.
