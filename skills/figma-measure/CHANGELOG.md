@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Point the existing `@artcom/design-diff` mention at the new
+  [`design-diff`](../design-diff/SKILL.md) skill instead of describing it inline only.
+
 ## 1.0.0
 
 - Initial release, extracted from `figma-to-react` §7 "Verify & deliver" (1.10.0). That section had
