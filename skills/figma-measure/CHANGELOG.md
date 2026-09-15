@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- Point the existing `@artcom/figma-visual-parity` mention (formerly `@artcom/design-diff`) at the
+  new [`figma-visual-parity`](../figma-visual-parity/SKILL.md) skill instead of describing it
+  inline only.
+
 ## 1.0.0
 
 - Initial release, extracted from `figma-to-react` §7 "Verify & deliver" (1.10.0). That section had

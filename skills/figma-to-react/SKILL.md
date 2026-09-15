@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Load ALONGSIDE the Figma plugin's `figma-design-to-code` skill — that one owns the tool-call contract and response-hint priority, this one layers ART+COM project conventions and pixel fidelity on top and overrides it on conflict. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.11.0
+  version: 1.12.0
   author: ART+COM
 ---
 
@@ -157,6 +157,15 @@ three and note that in the final summary.
   `public/design-overlays/`), then verify the running app under the overlay — difference blend
   mode makes any deviation light up — as part of the Verification step.
 
+- **[`figma-visual-parity`](../figma-visual-parity/SKILL.md)** — a programmatic pass/fail gate plus
+  a ranked diagnosis (font-metrics mismatch, uniform offset, DOM-attributed hotspots) instead of
+  eyeballing an overlay. Relevant when the project depends on `@artcom/figma-visual-parity` or has a
+  `figma-visual-parity.config.js`. If the user opts in: add a scenario for the implemented
+  screen/state (a Figma node id is enough; `figma-visual-parity capture` exports the reference),
+  then run `figma-visual-parity verify` as part of the Verification step —
+  `figma-visual-parity explain <scenario>` on a failure before changing any CSS, since its findings
+  are ordered so the first one is the thing worth acting on.
+
 - **`config-content-assets`** — the project's convention for separating configuration, content,
   and assets from component code. If the user opts in and the skill is installed, invoke it and
   follow its instructions for where downloaded Figma assets, copy/text content, and configurable
@@ -285,8 +294,8 @@ without it, and mention the gap in the final summary.
   Do not chase this with per-element nudges before checking which font file is loaded: a
   `margin-top` or `line-height` tweak that lines up one heading will be wrong at every other size.
   Verify by measuring the offset at two very different font sizes — if the pixel error grows with
-  size, it is the font files, not the CSS. `design-diff explain` reports exactly this gradient
-  (see [`figma-measure`](../figma-measure/SKILL.md)).
+  size, it is the font files, not the CSS. `figma-visual-parity explain` reports exactly this
+  gradient (see [`figma-measure`](../figma-measure/SKILL.md)).
 
   Expect a **residual of up to ~1 px on large text even after this**: browsers snap the baseline to
   a whole pixel where Figma places it on a fraction. That last pixel is not worth per-size hacks.
@@ -419,8 +428,11 @@ mismatches are, and where to escalate one you can't explain by eye. Run these in
    it for you) to confirm visually.
 6. If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
    exported design image.
-7. If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
-8. Lint using the project's own lint command before finishing.
+7. If the user opted into `figma-visual-parity` (section 2), run `figma-visual-parity verify` for
+   the touched scenario(s); on a mismatch, run `figma-visual-parity explain <scenario>` and fix
+   before finishing — don't finish on a failing gate.
+8. If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
+9. Lint using the project's own lint command before finishing.
 
 Don't treat step 1 as the whole of verification: a screenshot comparison by eye catches boxes and
 colours, and reliably misses the per-element errors §7 exists for.

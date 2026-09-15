@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.0
+
+- **New optional companion: [`figma-visual-parity`](../figma-visual-parity/SKILL.md)** (§2, §6
+  step 7). Wraps the published `@artcom/figma-visual-parity` CLI (formerly `@artcom/design-diff`,
+  renamed before wider adoption) — 1.9.0 already named it the preferred measurement tool where it
+  exists, but only inline inside `figma-measure`; it now has its own skill with the full
+  config/command reference, and is listed alongside `react-pixel-overlay`/`figma-sync` as something
+  to ask the user about opting into, not just something to reach for once already in the project.
+  §6's verification sequence gains a step: on opt-in, `figma-visual-parity verify` for the touched
+  scenario(s), `explain` on a failure, fix before finishing.
+
 ## 1.11.0
 
 Stop treating the Figma plugin's `figma-design-to-code` as a rival and layer on top of it instead.

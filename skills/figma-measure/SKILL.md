@@ -2,7 +2,7 @@
 name: figma-measure
 description: Measure and diagnose one specific difference between a rendered React screen and its Figma design export — which mechanism to use, how to prove the check can see the defect, and how to read the resulting number. Use when figma-to-react's §7 checklist leaves an element still reading as "off", when the user asks whether any member of a class of elements is wrong, when a diff number is implausibly large or suspiciously clean, or after changing a component several screens share.
 metadata:
-  version: 1.0.0
+  version: 1.0.1
   author: ART+COM
 ---
 
@@ -38,12 +38,13 @@ Three mechanisms, and only the first spends image tokens:
   *except* the per-mark pass, whose per-element arrays make it token-expensive. Reserve that pass for
   one hero or repeated element the user flags, never as a routine sweep.
 
-If `@artcom/design-diff` is available in the project, prefer it over hand-rolling the pixel pass:
-`design-diff verify`, then `design-diff explain <scenario>` when that fails — it reports a mean
-channel delta, a best-fit pixel offset **per font size** (the gradient that identifies a
-variable-font mismatch, see `figma-to-react` §4 Tokens), and the strongest differences attributed to
-DOM elements. Without it, the three mechanisms above are the fallback — but diff programmatically
-either way, never by inspection.
+If `@artcom/figma-visual-parity` is available in the project, prefer it over hand-rolling the pixel
+pass — see the [`figma-visual-parity`](../figma-visual-parity/SKILL.md) skill for the full
+command/config reference. `figma-visual-parity verify`, then `figma-visual-parity explain
+<scenario>` when that fails, reports a mean channel delta, a best-fit pixel offset **per font
+size** (the gradient that identifies a variable-font mismatch, see `figma-to-react` §4 Tokens), and
+the strongest differences attributed to DOM elements. Without it, the three mechanisms above are
+the fallback — but diff programmatically either way, never by inspection.
 
 Print one number (or one coordinate) per question you're answering. A script that dumps a full array
 when you needed a single offset is the expensive mistake, not the measuring itself. So: localize
