@@ -150,6 +150,18 @@ step also runs `capture` first to refresh them.
   otherwise the render gets diffed against the reference already composited on top of
   itself, which reads as a ~75% difference and nothing else the checklist above says
   points at the real cause.
+- **`verify` only waits for HTTP network-idle, fonts, and `config.settleMs`** (page-load and
+  font-flash settling, not app state). Content that arrives after that — over MQTT, a
+  WebSocket, or a fetch that resolves post-mount — is not covered, so a scenario can be
+  screenshotted before that data has rendered. The symptom is a `verify` score that changes
+  between identical runs, or that only fails intermittently. **Don't paper over this with a
+  shell-level `sleep` before invoking `verify`** — it's a guess at a duration that drifts as
+  the app changes. Add a `prepare` step that waits on the actual signal instead: a `waitFor`
+  selector that only appears once the real data is rendered (a `data-loaded` attribute, the
+  populated content itself), pairing it with a `mqtt` prepare step when the scenario needs to
+  publish the data itself first. If a scenario's content is asynchronous and you're not sure
+  it's settled, run `verify` twice in a row and compare — a changing score confirms a missing
+  `waitFor`, not a flaky tool.
 
 ## Library API
 

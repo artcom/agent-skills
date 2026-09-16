@@ -340,6 +340,11 @@ interactivity just because that tool didn't show any.
   `{ type: "NODE", navigation: "NAVIGATE", destinationId: "<nodeId>" }`). Walk the returned tree,
   collect every node with a non-empty `interactions`, and resolve each `destinationId` against
   the same tree's node names to build a click → next-frame map.
+  **Fetch the file once, then answer every node/interaction question against that one payload in
+  a single script** — write one script that walks the tree and prints everything you need
+  (interactions, specific node geometry, name lookups), rather than one small `node -e` per
+  question re-reading the same JSON from disk each time. The file only needs re-fetching if the
+  design changes.
 - **A frame that never appears as a `destinationId` is orphaned.** Before wiring every frame the
   user points at into a reachable state, check whether its node id shows up as a destination
   anywhere in the pulled interaction data. A frame with no incoming reaction isn't part of the
@@ -430,7 +435,13 @@ mismatches are, and where to escalate one you can't explain by eye. Run these in
    exported design image.
 7. If the user opted into `figma-visual-parity` (section 2), run `figma-visual-parity verify` for
    the touched scenario(s); on a mismatch, run `figma-visual-parity explain <scenario>` and fix
-   before finishing — don't finish on a failing gate.
+   before finishing — don't finish on a failing gate. **Never re-run `verify` a second time on
+   the same mismatch without an `explain` in between.** `verify` only returns a pass/fail number;
+   editing CSS and re-verifying to see if it worked is a guess-and-recheck loop, and each blind
+   round costs as much as reading the ranked diagnosis that would have told you what to change in
+   one step. If `verify`'s score itself is inconsistent between identical runs (not just
+   failing), that points at missing synchronization in the scenario config, not a CSS bug — see
+   `figma-visual-parity`'s Gotchas on `prepare.waitFor` for asynchronous content.
 8. If the user opted into `figma-sync` (section 2), re-baseline and confirm the sync status is clean.
 9. Lint using the project's own lint command before finishing.
 
