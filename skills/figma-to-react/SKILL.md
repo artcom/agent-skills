@@ -2,7 +2,7 @@
 name: figma-to-react
 description: Translate a Figma design into React code that matches the target project's own styling approach, design tokens, and components. Load ALONGSIDE the Figma plugin's `figma-design-to-code` skill — that one owns the tool-call contract and response-hint priority, this one layers ART+COM project conventions and pixel fidelity on top and overrides it on conflict. Use whenever the user shares a Figma link/node, asks to implement or build UI from a Figma design, or wants existing UI matched 1:1 to Figma. Requires the Figma MCP connector.
 metadata:
-  version: 1.12.0
+  version: 1.13.0
   author: ART+COM
 ---
 
@@ -142,17 +142,22 @@ project, then ask the user **once, in a single question** (multi-select, e.g. vi
 declines and don't ask again in the same session. In a non-interactive run where the user cannot be asked, skip all
 three and note that in the final summary.
 
-- **`figma-sync`** — keeps generated components verifiably in sync with their Figma nodes.
+- **`@artcom/figma-sync`** — keeps generated components verifiably in sync with their Figma nodes.
   Relevant when the project has a `.figma-sync/` directory, an `@artcom/figma-sync` dependency,
-  or `figma:*` scripts in `package.json`. If the user opts in: keep existing
+  or `figma:*` scripts in `package.json`. **The unscoped `figma-sync` on npm is an unrelated
+  package someone else registered — always use the `@artcom/` scope**, in `package.json` checks,
+  install commands, and when asking the user about this skill, so a generated question or command
+  never drops the scope and risks installing the wrong thing. If the user opts in: keep existing
   `// figma-sync: file=<fileKey> node=<nodeId> name=<ComponentName>` annotations intact, add one
   to each newly implemented component, and after implementation re-baseline with the project's
   update-manifest script (e.g. `npm run figma:update-manifest`), confirming the status script
   (e.g. `npm run figma:status`) reports `[SYNC]` for the touched components.
 
-- **`react-pixel-overlay`** — a PerfectPixel-style overlay for pixel-perfect QA. Relevant when
-  the project depends on `react-pixel-overlay` / `@artcom/react-pixel-overlay` (or mounts a
-  `PixelOverlay` component). If the user opts in: export the implemented Figma frame as a PNG at
+- **`@artcom/react-pixel-overlay`** — a PerfectPixel-style overlay for pixel-perfect QA. Relevant
+  when the project depends on `@artcom/react-pixel-overlay` (or mounts a `PixelOverlay`
+  component). An unscoped `react-pixel-overlay` existed briefly and was unpublished — always use
+  the `@artcom/` scope going forward, same as the other two companions. If the user opts in:
+  export the implemented Figma frame as a PNG at
   the exact target resolution into the project's overlay sources folder (commonly
   `public/design-overlays/`), then verify the running app under the overlay — difference blend
   mode makes any deviation light up — as part of the Verification step.
@@ -165,6 +170,16 @@ three and note that in the final summary.
   then run `figma-visual-parity verify` as part of the Verification step —
   `figma-visual-parity explain <scenario>` on a failure before changing any CSS, since its findings
   are ordered so the first one is the thing worth acting on.
+  **When the task covers more than one screen, add the scenario for each screen as you go (cheap
+  — it's just config + a capture) but batch the `verify`/`explain`/fix cycle to a single pass after
+  every screen is implemented**, rather than gating each screen on it individually. Tell the user
+  once implementation is done that the visual-parity suite is ready to run and let them decide
+  when: this is the most expensive step in the workflow (a headless browser render + pixel compare
+  per scenario, plus any `explain`-driven fix loop), and a screen finished early in the task
+  shouldn't pay for that loop again every time a later screen changes shared code. This doesn't
+  replace the free per-screen check — still eyeball one `difference`-blend overlay of each screen
+  against its export as you finish it (see "Default fidelity, then escalate" below); that's what
+  catches an issue while the screen is still in context, before batching the expensive gate.
 
 - **`config-content-assets`** — the project's convention for separating configuration, content,
   and assets from component code. If the user opts in and the skill is installed, invoke it and
@@ -332,19 +347,14 @@ interactivity just because that tool didn't show any.
   button pair and only one comes back as an `<a>`, that is the file telling you only one is
   actually wired — don't wire both into equivalent handlers just because they look like a pair.
 - **Get authoritative wiring from the Figma REST API when you need to confirm it across many
-  nodes/screens** — none of the bundled MCP tools expose this field directly. Call
-  `GET https://api.figma.com/v1/files/:fileKey/nodes?ids=<nodeId>` (or `/v1/files/:fileKey` for
-  the whole file) with header `X-Figma-Token: <token>` (commonly already available as a
-  `FIGMA_TOKEN` env var). Each node in the response carries an `interactions` array —
-  `trigger.type` (e.g. `ON_CLICK`) and `actions` (e.g.
-  `{ type: "NODE", navigation: "NAVIGATE", destinationId: "<nodeId>" }`). Walk the returned tree,
-  collect every node with a non-empty `interactions`, and resolve each `destinationId` against
-  the same tree's node names to build a click → next-frame map.
-  **Fetch the file once, then answer every node/interaction question against that one payload in
-  a single script** — write one script that walks the tree and prints everything you need
-  (interactions, specific node geometry, name lookups), rather than one small `node -e` per
-  question re-reading the same JSON from disk each time. The file only needs re-fetching if the
-  design changes.
+  nodes/screens** — none of the bundled MCP tools expose this field directly. Run
+  `node scripts/figma-interactions.mjs <fileKey> [nodeId...]` (from this skill's directory,
+  `FIGMA_TOKEN` set) instead of hand-writing a `curl` + inline `node -e` per question: it fetches
+  the file/nodes **once**, walks the tree, and prints the click → next-frame map plus which
+  top-level frames are never reached as a destination — the exact two things the next two bullets
+  need. Extend this script in place if a task needs another fact out of the same payload (e.g. a
+  specific node's geometry); don't fall back to a throwaway inline script that re-fetches or
+  re-parses the same file.
 - **A frame that never appears as a `destinationId` is orphaned.** Before wiring every frame the
   user points at into a reachable state, check whether its node id shows up as a destination
   anywhere in the pulled interaction data. A frame with no incoming reaction isn't part of the
@@ -433,9 +443,12 @@ mismatches are, and where to escalate one you can't explain by eye. Run these in
    it for you) to confirm visually.
 6. If the user opted into `react-pixel-overlay` (section 2), also verify under the overlay with the
    exported design image.
-7. If the user opted into `figma-visual-parity` (section 2), run `figma-visual-parity verify` for
-   the touched scenario(s); on a mismatch, run `figma-visual-parity explain <scenario>` and fix
-   before finishing — don't finish on a failing gate. **Never re-run `verify` a second time on
+7. If the user opted into `figma-visual-parity` (section 2): on a single-screen task, run
+   `figma-visual-parity verify` for the touched scenario now. On a multi-screen task, add the
+   scenario and move on — batch `verify` across every touched scenario in one pass once all
+   screens are implemented (see section 2), and check with the user before running it. Either
+   way, on a mismatch run `figma-visual-parity explain <scenario>` and fix before finishing —
+   don't finish on a failing gate. **Never re-run `verify` a second time on
    the same mismatch without an `explain` in between.** `verify` only returns a pass/fail number;
    editing CSS and re-verifying to see if it worked is a guess-and-recheck loop, and each blind
    round costs as much as reading the ranked diagnosis that would have told you what to change in

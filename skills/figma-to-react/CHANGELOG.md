@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.13.0
+
+Cost fixes from a token-usage audit of a real multi-screen run: two-thirds of the run's expensive
+bucket was a blind CSS-tweak/re-verify loop and a hand-rolled Figma REST probe repeated per question.
+
+- **§6 step 7: `explain` before every re-verify is now a hard rule, not just "on a mismatch."**
+  Re-running `verify` a second time on the same failure without reading `explain` first is
+  explicitly called out as a guess-and-recheck loop — each blind round costs as much as the ranked
+  diagnosis that would have named the fix in one step. A `verify` score that's inconsistent between
+  identical runs now points at a missing `prepare.waitFor` in the scenario config (see
+  `figma-visual-parity`'s new Gotchas entry on async content), not at a CSS bug to chase.
+- **§2 / §6: batch `figma-visual-parity verify` to one pass after all screens in a multi-screen
+  task are implemented**, instead of gating each screen on it individually, and check with the
+  user before running that pass — it's the most expensive step in the workflow. The free per-screen
+  overlay eyeball is unaffected and still happens as each screen finishes.
+- **New `scripts/figma-interactions.mjs`**, referenced from "Prototype interactions": fetches a
+  file/node once and prints the click → next-frame map plus orphaned frames, replacing a
+  hand-written `curl` + inline `node -e` per question against the same payload.
+- **§2: always name the three companions by their scoped npm package.** `figma-sync` and
+  `react-pixel-overlay`'s bullets gave the unscoped name equal or first billing, which a
+  generated opt-in question echoed verbatim — risky for `figma-sync` specifically, since the
+  unscoped name on npm is someone else's unrelated package. All three bullets now lead with
+  `@artcom/…` consistently, matching how `figma-visual-parity`'s bullet already did it.
+
 ## 1.12.0
 
 - **New optional companion: [`figma-visual-parity`](../figma-visual-parity/SKILL.md)** (§2, §6
